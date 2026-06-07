@@ -1,0 +1,165 @@
+<!--
+  virginiaCargo.uikitml
+  --------------------------------------------------------------------------
+  The Virginia port "Load Cargo" panel — the ONE interactive screen of this
+  leg. The student reads it floating over the dock and clicks goods to load
+  them into the ship's six-slot cargo hold, then clicks "Set Sail".
+
+  This file is just the MARKUP + STYLES (the look). All the behavior — what
+  happens when you click a good or Set Sail — lives in src/virginiaCargo.ts,
+  which finds these elements by their id (e.g. #load-tobacco, #slot-1) and
+  wires up the clicks.
+
+  UIKITML is a small subset of HTML. A few things to know as a beginner:
+    • <div> is a box/container, <span> is text, <button> is a clickable box.
+    • Sizes are in CENTIMETERS (width: 80 means 80cm), not pixels.
+    • Styling is plain CSS in the <style> block, matched by .class or #id.
+    • IMPORTANT: any text we change later from code (the slots, the message)
+      MUST start with real placeholder text here — an empty element gets
+      trimmed away and then code can't fill it in. So empty slots start as "-".
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The whole panel: a dark, warm wooden card laid out as a vertical column. */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 84;
+    padding: 3;
+    background-color: #1a120b;
+    border-color: #3a2a1a;
+    border-width: 0.15;
+    border-radius: 2.5;
+  }
+
+  /* The big port name at the top. */
+  .title {
+    font-size: 5;
+    font-weight: bold;
+    color: #f3e9d2;
+    text-align: left;
+  }
+
+  /* One line of softer instructions under the title. */
+  .subtitle {
+    font-size: 2.2;
+    color: #c9b896;
+    text-align: left;
+    margin-top: 0.4;
+  }
+
+  /* A small gold label that heads each section ("Trade Goods", "Cargo Hold"). */
+  .section-label {
+    font-size: 2.6;
+    font-weight: medium;
+    color: #c8962a;
+    text-align: left;
+    margin-top: 2.4;
+    margin-bottom: 1;
+  }
+
+  /* The three good buttons sit side by side in a row. */
+  .goods-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  /* Each good is a clickable wooden button. The slot cost is part of its label
+     (filled in from code so it always matches GOOD_SLOTS — see virginiaCargo.ts). */
+  .good-btn {
+    width: 24;
+    margin-right: 1.5;
+    padding: 1.6;
+    background-color: #5b3a21;
+    color: #f3e9d2;
+    border-color: #c8962a;
+    border-width: 0.12;
+    border-radius: 1.4;
+    font-size: 2.3;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  /* The cargo hold: six little slot boxes in a row that fill up as goods load. */
+  .hold-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  /* One empty slot. Code recolors it and writes the good's name into it when a
+     good is loaded; an empty slot shows a dim "—". */
+  .slot {
+    width: 11.5;
+    height: 9;
+    margin-right: 1.2;
+    padding: 0.6;
+    background-color: #2a1e14;
+    color: #8a7860;
+    border-color: #3a2a1a;
+    border-width: 0.12;
+    border-radius: 1;
+    font-size: 1.8;
+    font-weight: medium;
+    text-align: center;
+  }
+
+  /* The status line. Starts as a hint and becomes the "no space" warning when
+     the hold is too full for the good the student just clicked. */
+  .message {
+    font-size: 2.2;
+    color: #e0b870;
+    text-align: left;
+    margin-top: 2.2;
+  }
+
+  /* The Set Sail button. It SHIPS disabled-looking (dim) and the code brightens
+     it to gold once at least one good is aboard. */
+  #set-sail {
+    margin-top: 1.6;
+    padding: 2;
+    background-color: #3a2f24;
+    color: #6e5d48;
+    border-color: #4a3a28;
+    border-width: 0.12;
+    border-radius: 1.5;
+    font-size: 3;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="panel">
+  <span class="title">Virginia Port</span>
+  <span class="subtitle">Buy trade goods (coins) into your six-slot cargo hold, then set sail. What you pay now is subtracted from your profit later.</span>
+
+  <!-- SECTION 1: the goods the student can choose. The "· N slots" half of each
+       label is written in by code from GOOD_SLOTS so it can never drift. -->
+  <span class="section-label">Trade Goods</span>
+  <div class="goods-row">
+    <button id="load-tobacco" class="good-btn">Tobacco</button>
+    <button id="load-lumber" class="good-btn">Lumber</button>
+    <button id="load-furs" class="good-btn">Furs</button>
+  </div>
+
+  <!-- SECTION 2: the visible cargo hold — six slots that fill as goods load.
+       Each starts as a dim "-". Code (refresh() in virginiaCargo.ts) repaints
+       these every time the cargo changes. -->
+  <span class="section-label">Cargo Hold</span>
+  <div class="hold-row">
+    <button id="slot-1" class="slot">-</button>
+    <button id="slot-2" class="slot">-</button>
+    <button id="slot-3" class="slot">-</button>
+    <button id="slot-4" class="slot">-</button>
+    <button id="slot-5" class="slot">-</button>
+    <button id="slot-6" class="slot">-</button>
+  </div>
+
+  <!-- The status line + the Set Sail button. -->
+  <span id="message" class="message">Pick a good to load it into the hold.</span>
+  <button id="set-sail">Set Sail</button>
+</div>

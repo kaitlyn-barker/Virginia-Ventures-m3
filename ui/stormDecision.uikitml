@@ -1,0 +1,131 @@
+<!--
+  stormDecision.uikitml
+  --------------------------------------------------------------------------
+  The STORM AT SEA card — the first gamified decision, shown on the open ocean
+  after leaving Virginia and before reaching England. The captain reads it and
+  chooses: brave the storm (faster, but risk losing a crate) or sail around it
+  (safe hold, but a coin cost in provisions).
+
+  This file is just the MARKUP + STYLES (the look). All the behavior — rolling
+  the random outcome and handling Continue — lives in src/stormDecision.ts,
+  which finds these elements by their id (#jettison, #ride, #storm-message,
+  #storm-continue) and wires them up.
+
+  UIKITML reminders for beginners:
+    - <span> is a line of text, <button> is a clickable box, <div> is a container.
+    - Sizes are in CENTIMETERS (width: 104 means 104cm), not pixels.
+    - Any text we REPLACE later from code must START with real placeholder text
+      here, or UIKit trims the empty element away and code can't fill it in.
+      That's why #storm-message starts as "Choose your course, Captain."
+    - The panel font has no em-dash glyph, so we use plain ASCII hyphens here and
+      in the code that writes into this card.
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The whole card: a dark, cold storm-blue panel — the stormy counterpoint to
+     the warm Virginia and parchment cards — laid out as a vertical column. */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 104;
+    padding: 4;
+    background-color: #0e1518;
+    border-color: #2a3942;
+    border-width: 0.18;
+    border-radius: 3;
+  }
+
+  /* The title, in a cold stormy blue. */
+  .title {
+    font-size: 5;
+    font-weight: bold;
+    color: #9fc2d6;
+    text-align: left;
+  }
+
+  /* A softer line of scene-setting under the title. */
+  .subtitle {
+    font-size: 2.2;
+    color: #8aa0ad;
+    text-align: left;
+    margin-top: 0.4;
+    margin-bottom: 1.4;
+  }
+
+  /* The decision prompt itself. Wraps onto several lines inside the width. */
+  .prompt {
+    font-size: 2.4;
+    color: #e7edf1;
+    text-align: left;
+    margin-top: 1;
+    margin-bottom: 2.4;
+  }
+
+  /* The two choices sit side by side in a row. */
+  .choices {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  /* Each choice is a clickable cold-steel button. Code dims both once a course
+     is set, so they read as locked. */
+  .choice {
+    width: 48;
+    margin-right: 1.5;
+    padding: 2;
+    background-color: #1d2932;
+    color: #e7edf1;
+    border-color: #3f566a;
+    border-width: 0.12;
+    border-radius: 1.5;
+    font-size: 2.4;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  /* The outcome/status line. Starts as a hint and becomes the result of the
+     captain's choice (a lost crate, a clean passage, or the detour cost). */
+  .message {
+    font-size: 2.2;
+    color: #e0b870;
+    text-align: left;
+    margin-top: 2.4;
+  }
+
+  /* The Continue button. It SHIPS disabled-looking (dim) and the code brightens
+     it to gold once a course has been chosen. */
+  #storm-continue {
+    margin-top: 1.6;
+    padding: 2;
+    background-color: #3a2f24;
+    color: #6e5d48;
+    border-color: #4a3a28;
+    border-width: 0.12;
+    border-radius: 1.5;
+    font-size: 3;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="panel">
+  <span class="title">Storm at Sea</span>
+  <span class="subtitle">Mid-Atlantic, the sky turns black and the swell rises.</span>
+
+  <!-- The decision. Wording kept ASCII-only (no em-dash glyph in the panel font). -->
+  <span class="prompt">A storm is battering the ship! Heavy cargo is making it list dangerously.</span>
+
+  <!-- The two choices. Their labels are baked in here (code only dims them). -->
+  <div class="choices">
+    <button id="jettison" class="choice">Throw some cargo overboard to stay safe</button>
+    <button id="ride" class="choice">Hold on and ride it out</button>
+  </div>
+
+  <!-- The status line (code rewrites it with the outcome) + the Continue button. -->
+  <span id="storm-message" class="message">Choose your course, Captain.</span>
+  <button id="storm-continue">Continue</button>
+</div>

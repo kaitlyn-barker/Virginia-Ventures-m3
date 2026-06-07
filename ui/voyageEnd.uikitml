@@ -1,0 +1,36 @@
+<!--
+  voyageEnd.uikitml
+  --------------------------------------------------------------------------
+  A tiny farewell card shown after the student clicks "Finish". It has no
+  buttons and no logic - it just leaves a gentle closing note in the world so
+  the screen isn't suddenly empty when the voyage ends.
+
+  Sizes are in CENTIMETERS. The text is baked in here (nothing is set at
+  runtime), so this file needs no matching code beyond being created.
+  --------------------------------------------------------------------------
+-->
+<style>
+  .end {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 70;
+    padding: 5;
+    background-color: #f3e9d2; /* PALETTE.CREAM */
+    border-color: #c8962a; /* PALETTE.GOLD */
+    border-width: 0.25;
+    border-radius: 3;
+  }
+
+  .end-text {
+    font-size: 4.5;
+    font-weight: bold;
+    color: #5b3a21; /* PALETTE.SHIP_WOOD */
+    text-align: center;
+  }
+</style>
+
+<div class="end">
+  <span class="end-text">Voyage complete. Fair winds, Captain!</span>
+</div>

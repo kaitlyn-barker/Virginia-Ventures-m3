@@ -1,0 +1,167 @@
+<!--
+  englandRules.uikitml
+  --------------------------------------------------------------------------
+  The ENGLAND arrival "rule card" — the teaching beat of this leg. When the
+  ship reaches England, this card floats in front of the player and explains
+  the Navigation Acts: England (the Crown), not the colonist, decides what the
+  cargo is worth. The student then HAGGLES that price (Push for more / Accept),
+  and a Continue button leads onward to the smuggler step.
+
+  This file is just the MARKUP + STYLES (the look). All the behavior — storm
+  damage, the haggle rounds, and the Continue button — lives in
+  src/englandRules.ts, which finds these elements by their id (#offer-value,
+  #haggle-push, #haggle-accept, #sale-message, #continue-voyage) and wires them up.
+
+  UIKITML reminders for beginners:
+    - <span> is a line of text, <button> is a clickable box, <div> is a container.
+    - Sizes are in CENTIMETERS (width: 104 means 104cm), not pixels.
+    - Styling is plain CSS in the <style> block, matched by .class or #id.
+    - Any text we REPLACE later from code must START with real placeholder text
+      here, or UIKit trims the empty element away and code can't fill it in.
+      That's why #cargo-value starts as "Calculating cargo value...".
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The whole card: a cold, dark slate panel (England's cool palette) laid out
+     as a vertical column, with gold accents to echo the Crown. */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 104;
+    padding: 4;
+    background-color: #10161b;
+    border-color: #2a3942;
+    border-width: 0.18;
+    border-radius: 3;
+  }
+
+  /* The big port name at the top. */
+  .title {
+    font-size: 5;
+    font-weight: bold;
+    color: #c8962a; /* PALETTE.GOLD — the Crown's brass */
+    text-align: left;
+  }
+
+  /* A softer line of scene-setting under the title. */
+  .subtitle {
+    font-size: 2.2;
+    color: #9fb0bb;
+    text-align: left;
+    margin-top: 0.4;
+    margin-bottom: 1.4;
+  }
+
+  /* The rule text itself — the Navigation Acts. Long, so it wraps onto several
+     lines inside the panel's width. */
+  .rule {
+    font-size: 2.4;
+    color: #e7edf1;
+    text-align: left;
+    margin-top: 1;
+  }
+
+  /* A small gold heading over the offer line. */
+  .value-label {
+    font-size: 2.4;
+    font-weight: medium;
+    color: #c8962a;
+    text-align: left;
+    margin-top: 2.6;
+  }
+
+  /* The big current-offer number. Code rewrites this as the captain haggles (see
+     src/englandRules.ts); it ships with placeholder text so it isn't trimmed. */
+  .value {
+    font-size: 3.2;
+    font-weight: bold;
+    color: #f3e9d2; /* PALETTE.CREAM */
+    text-align: left;
+    margin-top: 0.6;
+    margin-bottom: 1.4;
+  }
+
+  /* A row of sale actions sitting side by side. */
+  .sale-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  /* The two haggle buttons ("Push for more" / "Accept"): cool slate with a gold
+     edge, side by side. Code dims them once a price is settled. */
+  .sale-btn {
+    width: 48;
+    margin-right: 1.5;
+    padding: 1.8;
+    background-color: #1d2932;
+    color: #e7edf1;
+    border-color: #c8962a;
+    border-width: 0.12;
+    border-radius: 1.4;
+    font-size: 2.3;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  /* The haggle status line — the running offer commentary and the agreed-price
+     confirmation. Ships with placeholder text so it isn't trimmed. */
+  .sale-message {
+    font-size: 2.2;
+    color: #9fb0bb;
+    text-align: left;
+    margin-top: 1.8;
+  }
+
+  /* The Continue button. It SHIPS disabled-looking (dim) and the code brightens
+     it to gold once the cargo has been sold. */
+  #continue-voyage {
+    margin-top: 1.8;
+    padding: 2;
+    background-color: #2a3942;
+    color: #6b7682;
+    border-color: #4a3a28;
+    border-width: 0.12;
+    border-radius: 1.5;
+    font-size: 3;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="panel">
+  <span class="title">England</span>
+  <span class="subtitle">You have made port. The Crown's customs house is waiting.</span>
+
+  <!-- The lesson. This is the exact wording of the rule card. NOTE: the panel
+       font has no em-dash (—) glyph (it renders as a broken box), so the one
+       dash in "prices — not you" is written as a plain hyphen "-" — the same
+       ASCII-only rule the other panels in this project follow. The wording is
+       otherwise verbatim. -->
+  <span class="rule">The Navigation Acts. By order of the Crown, all colonial raw goods must be shipped to England and sold to English merchants only. England sets the prices - not you. You may not sell to other nations. This is mercantilism: the colony exists to make the mother country wealthy.</span>
+
+  <!-- The haggle. England names an opening price (its list valuation, lowered by
+       storm damage if any); the captain may "Push for more" (up to a few rounds,
+       each push risking the merchant balking) or "Accept" the current offer. The
+       smuggler's illegal alternative is a SEPARATE step (built in Edit 4). All
+       numbers/text below are written by code (see englandRules.ts); placeholders
+       keep the elements from being trimmed. -->
+  <span class="value-label">England's offer for your cargo</span>
+  <span id="offer-value" class="value">Calculating cargo value...</span>
+
+  <!-- Push for a better price, or accept the current offer. -->
+  <div class="sale-row">
+    <button id="haggle-push" class="sale-btn">Push for more</button>
+    <button id="haggle-accept" class="sale-btn">Accept</button>
+  </div>
+
+  <!-- The running haggle status (offer commentary, then the agreed-price line). -->
+  <span id="sale-message" class="sale-message">Haggle for a better price, or accept the offer.</span>
+
+  <!-- Onward. Ships dim; code brightens it once a price is agreed, then leads to
+       the smuggler step (Edit 4; for now it continues to the route map). -->
+  <button id="continue-voyage">Continue</button>
+</div>

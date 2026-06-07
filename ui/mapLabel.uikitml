@@ -1,0 +1,47 @@
+<!--
+  mapLabel.uikitml
+  --------------------------------------------------------------------------
+  A tiny, REUSABLE text label for the route map. We make ONE markup file and
+  reuse it for every label on the chart (the title, the three port names, and
+  the "third leg" caption). Each label is its own little floating panel; the
+  map system (src/returnHomeMap.ts) drops the real words into each one at
+  runtime, so we don't need five almost-identical files.
+
+  Beginner notes:
+    - <span> is a line of text; the id="label" lets code find and fill it.
+    - Sizes are in CENTIMETERS (font-size: 7 means 7cm in the panel's own
+      layout, which is then scaled down to the panel's maxWidth in meters).
+    - The text starts as "Label" (NOT empty) on purpose: setting the text at
+      runtime only works if there's already some text here to replace.
+    - The little cream pill behind the words keeps them readable even when a
+      gold route line passes right behind the label.
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The pill: a small rounded cream chip that hugs its text. */
+  .label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 3;
+    padding-right: 3;
+    padding-top: 1.6;
+    padding-bottom: 1.6;
+    background-color: #f6eeda; /* a hair lighter than the CREAM map paper */
+    border-radius: 3;
+    border-color: #c8962a; /* PALETTE.GOLD - a thin gilt edge */
+    border-width: 0.18;
+  }
+
+  /* The words themselves, in dark brown "ink". */
+  .label-text {
+    font-size: 7;
+    font-weight: bold;
+    color: #5b3a21; /* PALETTE.SHIP_WOOD */
+    text-align: center;
+  }
+</style>
+
+<div class="label">
+  <span id="label" class="label-text">Label</span>
+</div>

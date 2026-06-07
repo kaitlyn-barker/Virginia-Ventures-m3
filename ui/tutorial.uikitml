@@ -1,0 +1,105 @@
+<!--
+  tutorial.uikitml
+  --------------------------------------------------------------------------
+  The REUSABLE tutorial "coach" card. One markup file, shown again and again:
+  before each leg of the voyage a short teaching card floats in front of the
+  player, names the historical idea behind that leg, and says what to do. The
+  player taps the button to dismiss it and reveal that leg's real activity.
+
+  Because it is reused, NONE of its words are baked in here - every line is a
+  placeholder that src/tutorial.ts overwrites at runtime with the content for
+  the current section (see the TUTORIALS table there). The placeholders are
+  real, non-empty text on purpose: UIKit trims an empty element away, and then
+  code could not fill it in.
+
+  This file is just the MARKUP + STYLES. The behavior (filling the text in and
+  handling the button) lives in src/tutorial.ts, which finds these elements by
+  their id (#tutorial-eyebrow, #tutorial-title, #tutorial-body, #tutorial-task,
+  #tutorial-next).
+
+  UIKITML reminders for beginners:
+    - <span> is a line of text, <button> is a clickable box, <div> is a container.
+    - Sizes are in CENTIMETERS (width: 96 means 96cm), not pixels.
+    - The panel font has no em-dash glyph, so we use plain ASCII hyphens here and
+      in the code that writes into this card.
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The whole card: a dark, warm wooden coach card with a gold edge, so it reads
+     as the same "guide" voice no matter which scene (warm Virginia, cold storm,
+     slate England) it floats over. Laid out as a vertical column. */
+  .coach {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 96;
+    padding: 4;
+    background-color: #17120c;
+    border-color: #c8962a; /* PALETTE.GOLD - the guide's gilt edge */
+    border-width: 0.2;
+    border-radius: 3;
+  }
+
+  /* The small gold "TUTORIAL - <section>" eyebrow over the title. */
+  .eyebrow {
+    font-size: 2.2;
+    font-weight: bold;
+    color: #c8962a;
+    text-align: left;
+  }
+
+  /* The card's title - the name of this teaching beat. */
+  .title {
+    font-size: 5;
+    font-weight: bold;
+    color: #f3e9d2; /* PALETTE.CREAM */
+    text-align: left;
+    margin-top: 0.6;
+  }
+
+  /* The teaching paragraph - the history/economics behind this leg. Wraps onto
+     several lines inside the card's width. */
+  .body {
+    font-size: 2.6;
+    color: #e7dcc4;
+    text-align: left;
+    line-height: 1.35;
+    margin-top: 1.8;
+  }
+
+  /* The "What to do" call-to-action, picked out in warm gold so the student can
+     find the instruction at a glance. */
+  .task {
+    font-size: 2.5;
+    font-weight: medium;
+    color: #e0b870;
+    text-align: left;
+    margin-top: 2;
+  }
+
+  /* The single dismiss button: a solid gold bar with dark ink. Its label is set
+     from code (e.g. "Got it - load my hold"), so it ships with a placeholder. */
+  #tutorial-next {
+    margin-top: 2.6;
+    padding: 2;
+    background-color: #c8962a; /* PALETTE.GOLD */
+    color: #1a120b; /* near-black ink reads cleanly on gold */
+    border-color: #4a3a28;
+    border-width: 0.12;
+    border-radius: 1.6;
+    font-size: 3;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="coach">
+  <!-- Every line below is overwritten at runtime by src/tutorial.ts for the
+       current section. They start as real placeholder text so UIKit keeps them. -->
+  <span id="tutorial-eyebrow" class="eyebrow">TUTORIAL</span>
+  <span id="tutorial-title" class="title">Tutorial</span>
+  <span id="tutorial-body" class="body">Instructions for this part of the voyage appear here.</span>
+  <span id="tutorial-task" class="task">What to do: follow along.</span>
+  <button id="tutorial-next">Got it</button>
+</div>
