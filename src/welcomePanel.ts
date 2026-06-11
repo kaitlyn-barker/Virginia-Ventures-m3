@@ -30,6 +30,7 @@ import {
   type World,
   type Entity,
 } from "@iwsdk/core";
+import { juiceButton } from "./uiFx";
 
 // The callback to run when the student taps "Begin Voyage". Stored at module
 // scope because the SYSTEM (not the caller) decides when the button is clicked.
@@ -94,7 +95,16 @@ export class WelcomeSystem extends createSystem({
       if (!doc) return;
 
       const beginBtn = doc.getElementById("welcome-begin") as UIKit.Text | null;
-      beginBtn?.addEventListener("click", () => this.beginVoyage(entity));
+      if (beginBtn) {
+        // juiceButton = click sound + gold flash on every tap. This button's
+        // colors never change at runtime, so the restore is just its true colors
+        // straight from ui/welcomePanel.uikitml (#welcome-begin: gold bar, dark
+        // ink).
+        juiceButton(beginBtn, () => this.beginVoyage(entity), {
+          backgroundColor: "#c8962a",
+          color: "#1a120b",
+        });
+      }
     });
   }
 

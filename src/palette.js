@@ -20,4 +20,12 @@ export const PALETTE = {
   GOLD: "#c8962a", // warm brass/gold — trim, the railing cap
   OCEAN: "#3f5a6b", // calm muted blue-grey — the sea
   SKY: "#79a8d6", // soft daytime blue — the upper sky
+
+  // --- Enriched golden-hour hues (added with the visual-polish pass). All are
+  // family-adjacent to the five originals, so the look stays recognizable.
+  HORIZON_PEACH: "#f4cf9b", // the warm glow where the sky meets the sea
+  WATER_LIT: "#4d6c80", // sun-touched wave tops painted into the water texture
+  FOAM: "#dfe9ee", // white water — foam rings at pilings and the hull
+  LEAF_GREEN: "#4f7034", // tree canopies and tobacco plants on the Virginia shore
+  LANTERN_GLOW: "#ffd27a", // the warm glow of lanterns and lit windows
 };

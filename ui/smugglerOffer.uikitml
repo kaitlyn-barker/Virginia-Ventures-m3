@@ -1,15 +1,18 @@
 <!--
   smugglerOffer.uikitml
-  --------------------------------------------------------------------------
-  The SMUGGLER'S OFFER card — shown after the England haggle. A Dutch smuggler
+  ..........................................................................
+  The SMUGGLER'S OFFER card - shown after the England haggle. A Dutch smuggler
   offers more money than England for the same cargo, illegally. The student
   sees both prices side by side and picks a buyer.
 
-  This file is just the MARKUP + STYLES (the look). All the behavior — computing
+  This file is just the MARKUP + STYLES (the look). All the behavior - computing
   the smuggler's total, rolling the catch gamble, setting the final profit and
-  Crown Compliance, and Continue — lives in src/smugglerOffer.ts, which finds
+  Crown Compliance, and Continue - lives in src/smugglerOffer.ts, which finds
   these elements by their id (#england-amount, #smuggler-amount, #sell-england,
   #sell-smuggler, #smuggler-message, #smuggler-continue) and wires them up.
+  Newer ids the code can also reach: #smuggler-card (the whole card, so code
+  can flash its border), #risk-note (the odds warning), and the two button
+  labels #sell-england-label / #sell-smuggler-label (so code can dim them).
 
   UIKITML reminders for beginners:
     - <span> is a line of text, <button> is a clickable box, <div> is a container.
@@ -18,11 +21,17 @@
       here, or UIKit trims the empty element away and code can't fill it in. That's
       why the amounts start as "0 coins".
     - ASCII-only punctuation (the panel font has no em-dash glyph).
-  --------------------------------------------------------------------------
+  ..........................................................................
 -->
 <style>
+  /* COLOR CODE used across every card in the voyage (keep it consistent!):
+       gold   #c8962a = "tap this" (buttons that are ready to press)
+       green  #9fd29f = good news (safe choices, happy outcomes)
+       orange #e08a5a = risky or bad news (gambles, penalties)        */
+
   /* The whole card: the same cold, dark slate as the England card, since this is
-     still the England port — just a shadier corner of it. */
+     still the England port - just a shadier corner of it. The gold frame matches
+     every other card in the voyage, so the set reads as one family. */
   .panel {
     display: flex;
     flex-direction: column;
@@ -30,9 +39,18 @@
     width: 104;
     padding: 4;
     background-color: #10161b;
-    border-color: #2a3942;
-    border-width: 0.18;
+    border-color: #c8962a;
+    border-width: 0.2;
     border-radius: 3;
+  }
+
+  /* The scene ribbon: a small bold line that names WHERE you are. */
+  .ribbon {
+    font-size: 2.4;
+    font-weight: bold;
+    color: #e7b9a6;
+    text-align: left;
+    margin-bottom: 0.8;
   }
 
   /* The title. */
@@ -43,9 +61,33 @@
     text-align: left;
   }
 
+  /* The voyage step tracker: six little chips showing the whole trip.
+     The CURRENT step (this card is step 4, the smuggler's deal) glows gold. */
+  .steps {
+    display: flex;
+    flex-direction: row;
+    margin-top: 1;
+    margin-bottom: 1.5;
+  }
+  .step {
+    width: 15;
+    padding: 0.6;
+    margin-right: 1;
+    font-size: 2.0;
+    text-align: center;
+    border-radius: 1;
+    background-color: #241a10;
+    color: #8a7860;
+  }
+  .step-now {
+    background-color: #c8962a;
+    color: #1a120b;
+    font-weight: bold;
+  }
+
   /* A softer line of scene-setting under the title. */
   .subtitle {
-    font-size: 2.2;
+    font-size: 2.6;
     color: #9fb0bb;
     text-align: left;
     margin-top: 0.4;
@@ -85,18 +127,27 @@
 
   /* The small label above each amount. */
   .offer-label {
-    font-size: 2;
+    font-size: 2.4;
     color: #9fb0bb;
     text-align: center;
   }
 
   /* The big coin amount (filled in from code). */
   .offer-amount {
-    font-size: 3.4;
+    font-size: 4;
     font-weight: bold;
     color: #f3e9d2; /* PALETTE.CREAM */
     text-align: center;
     margin-top: 0.4;
+  }
+
+  /* The odds warning under the smuggler's tempting number. Kids must SEE the
+     gamble before they take it - 3 in 10 smugglers get caught. */
+  .risk-note {
+    font-size: 2.6;
+    color: #e7b9a6;
+    text-align: center;
+    margin-top: 0.6;
   }
 
   /* The two buyer buttons sit side by side. */
@@ -107,49 +158,75 @@
     margin-top: 1.8;
   }
 
-  /* Shared button box layout. Per-button colors are set by id below. */
+  /* Shared button box layout: a clickable column that stacks a SAFE/RISKY tag
+     over its action label. Per-button colors are set by id below. */
   .buy-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 48;
     margin-right: 1.5;
     padding: 1.8;
     border-width: 0.12;
     border-radius: 1.4;
-    font-size: 2.2;
-    font-weight: medium;
-    text-align: center;
     cursor: pointer;
   }
 
-  /* The legal sale: cool slate with a gold edge. */
+  /* The tag line: SAFE in green, RISKY! in orange (the shared color code). */
+  .buy-tag {
+    font-size: 2.4;
+    font-weight: bold;
+    text-align: center;
+  }
+  .tag-safe {
+    color: #9fd29f;
+  }
+  .tag-risky {
+    color: #e08a5a;
+  }
+
+  /* The action line under the tag. */
+  .buy-label {
+    font-size: 2.6;
+    color: #e7edf1;
+    text-align: center;
+    margin-top: 0.6;
+  }
+
+  /* The legal sale: cool slate with a calm green "safe" edge. */
   #sell-england {
     background-color: #1d2932;
-    color: #e7edf1;
-    border-color: #c8962a;
+    border-color: #5d8a5d;
   }
 
   /* The illegal sale: the illicit red-brown, to mark it as the risky path. */
   #sell-smuggler {
     background-color: #3a211c;
-    color: #e7b9a6;
-    border-color: #8a4636;
+    border-color: #a05a3a;
   }
 
-  /* The outcome / status line. Starts as a prompt and becomes the plain-language
-     result (sold legally / smuggled successfully / caught and fined). */
+  /* The outcome / status line - the BIGGEST reveal in the game, so it gets a
+     banner: big bold centered text on its own dark band. Starts as a prompt
+     and becomes the result (sold legally / got away / caught and fined). */
   .message {
-    font-size: 2.2;
+    font-size: 3.2;
+    font-weight: bold;
     color: #9fb0bb;
-    text-align: left;
+    text-align: center;
     margin-top: 1.8;
+    padding: 1.4;
+    border-radius: 1.2;
+    background-color: #16212a;
   }
 
-  /* The Continue button. It SHIPS disabled-looking (dim) and the code brightens
-     it to gold once a buyer has been chosen. */
+  /* The Continue button. It SHIPS locked: dim colors AND a label that says WHY
+     it is locked ("Pick a buyer first"). The code turns it gold and renames it
+     "Continue" once a buyer has been chosen. */
   #smuggler-continue {
     margin-top: 1.6;
     padding: 2;
     background-color: #2a3942;
-    color: #6b7682;
+    color: #93a0ab;
     border-color: #4a3a28;
     border-width: 0.12;
     border-radius: 1.5;
@@ -160,11 +237,25 @@
   }
 </style>
 
-<div class="panel">
+<div id="smuggler-card" class="panel">
+  <span class="ribbon">PORT OF ENGLAND - A SHADY CORNER</span>
   <span class="title">A Dutch Smuggler</span>
+
+  <!-- Where you are in the voyage: step 4 of 6, the shady deal. -->
+  <div class="steps">
+    <span class="step">1 Load</span>
+    <span class="step">2 Storm</span>
+    <span class="step">3 Sell</span>
+    <span class="step step-now">4 Deal</span>
+    <span class="step">5 Map</span>
+    <span class="step">6 Score</span>
+  </div>
+
   <span class="subtitle">In the shadow of the customs house, a Dutch trader whispers a better price - if you will break the Crown's rules.</span>
 
-  <!-- The two offers, side by side. Amounts are written in by code. -->
+  <!-- The two offers, side by side. Amounts are written in by code. The risk
+       note sits right under the smuggler's bigger number, so the temptation
+       and the danger land in the same glance. -->
   <div class="offers">
     <div class="offer offer-legal">
       <span class="offer-label">England (legal)</span>
@@ -173,16 +264,24 @@
     <div class="offer offer-illegal">
       <span class="offer-label">Smuggler (illegal)</span>
       <span id="smuggler-amount" class="offer-amount">0 coins</span>
+      <span id="risk-note" class="risk-note">Risky: 3 in 10 smugglers get caught.</span>
     </div>
   </div>
 
-  <!-- The two buyer choices. -->
+  <!-- The two buyer choices: each one shows its consequence BEFORE you click,
+       a SAFE or RISKY! tag stacked over the action. -->
   <div class="buttons">
-    <button id="sell-england" class="buy-btn">Sell to England (legal)</button>
-    <button id="sell-smuggler" class="buy-btn">Sell to the smuggler (illegal)</button>
+    <div id="sell-england" class="buy-btn">
+      <span class="buy-tag tag-safe">SAFE</span>
+      <span id="sell-england-label" class="buy-label">Sell to England (legal)</span>
+    </div>
+    <div id="sell-smuggler" class="buy-btn">
+      <span class="buy-tag tag-risky">RISKY! 3 in 10 get caught</span>
+      <span id="sell-smuggler-label" class="buy-label">Sell to the smuggler (illegal)</span>
+    </div>
   </div>
 
   <!-- The running status (code rewrites it with the outcome) + Continue. -->
   <span id="smuggler-message" class="message">Take the safe, legal price - or gamble on the smuggler?</span>
-  <button id="smuggler-continue">Continue</button>
+  <button id="smuggler-continue">Pick a buyer first</button>
 </div>

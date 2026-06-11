@@ -52,6 +52,12 @@ import { beginSmugglerOffer } from "./smugglerOffer.js";
 // The reusable tutorial coach: a short teaching card gates the England rule card.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
 
+// Shared polish: juiceButton answers every tap with a click sound and a quick
+// gold flash, and refreshHud repaints the captain's ledger overhead whenever
+// this file changes the voyage logbook.
+import { juiceButton } from "./uiFx.js";
+import { refreshHud } from "./hud.js";
+
 // voyageState.js is plain JavaScript, so TypeScript infers very tight types for
 // it (ENGLAND_PRICE as exactly its three keys, cargoLoaded as an empty array).
 // We view them through small typed aliases so the logic reads cleanly — we never
@@ -91,6 +97,9 @@ export function arriveInEngland(): void {
   // point the student then haggles from (and that storm damage is applied to in
   // wirePanel). We never overwrite it below, so the raw list value is preserved.
   voyageState.cargoValue = total;
+
+  // The logbook changed, so repaint the captain's ledger floating overhead.
+  refreshHud();
 }
 
 /**
@@ -177,14 +186,29 @@ export class EnglandRulesSystem extends createSystem({
     let pushingClosed = false; //  no more pushes (hit the round cap, or annoyed)
     let settled = false; //        true once the student Accepts the price
 
-    // Small helpers: redraw the offer line, and dim a button to read as locked.
+    // Small helpers. renderOffer redraws the offer line - the NUMBER leads, so
+    // the coins are the first thing a young captain reads. paintButtons repaints
+    // every button to its TRUE state; it is also what juiceButton restores to
+    // after its gold flash, so a flash can never strand a button in the wrong
+    // colors.
     const renderOffer = () => {
       offerText?.setProperties({
-        text: `England offers ${currentOffer} coins for your ${goods}.`,
+        text: `${currentOffer} coins - England's offer for your ${goods}`,
       });
     };
-    const dim = (btn: UIKit.Text | null) =>
-      btn?.setProperties({ backgroundColor: "#2a3942", color: "#6b7682" });
+    const LIVE = { backgroundColor: "#1d2932", color: "#e7edf1" }; // a tappable haggle button
+    const LOCKED = { backgroundColor: "#2a3942", color: "#93a0ab" }; // locked reads calm, not broken
+    const paintButtons = () => {
+      pushBtn?.setProperties(settled || pushingClosed ? LOCKED : LIVE);
+      acceptBtn?.setProperties(settled ? LOCKED : LIVE);
+      // The Continue button explains itself: while locked its LABEL carries the
+      // reason; once a price is agreed it turns gold and simply says "Continue".
+      continueBtn?.setProperties(
+        settled
+          ? { text: "Continue", backgroundColor: "#c8962a", color: "#1a120b" }
+          : { text: "Agree a price first", ...LOCKED },
+      );
+    };
 
     // --- Push for more: +10% of base, but a 25% chance the merchant balks ------
     const pushForMore = () => {
@@ -196,7 +220,7 @@ export class EnglandRulesSystem extends createSystem({
         // and no more haggling. The student can still Accept it.
         currentOffer = Math.round(base * HAGGLE_ANNOYED_PCT);
         pushingClosed = true;
-        dim(pushBtn);
+        paintButtons();
         renderOffer();
         saleMessage?.setProperties({
           text: "The merchant takes offense - final offer, take it or leave it. Tap Accept to settle.",
@@ -211,14 +235,14 @@ export class EnglandRulesSystem extends createSystem({
       if (pushesUsed >= HAGGLE_MAX_ROUNDS) {
         // Out of rounds: this is England's final offer now.
         pushingClosed = true;
-        dim(pushBtn);
+        paintButtons();
         saleMessage?.setProperties({
-          text: `The merchant comes up to ${currentOffer} coins - their final offer. Tap Accept to settle.`,
+          text: `Well haggled! The merchant comes up to ${currentOffer} coins. That is their final offer - tap Accept to settle.`,
           color: "#9fd29f",
         });
       } else {
         saleMessage?.setProperties({
-          text: `The merchant grumbles but comes up to ${currentOffer} coins. Push again, or Accept?`,
+          text: `Well haggled! The merchant comes up to ${currentOffer} coins. Push again, or Accept?`,
           color: "#9fd29f",
         });
       }
@@ -233,14 +257,17 @@ export class EnglandRulesSystem extends createSystem({
       settled = true;
       pushingClosed = true;
       voyageState.englishSaleAmount = currentOffer;
-
-      dim(pushBtn);
-      dim(acceptBtn);
-      continueBtn?.setProperties({ backgroundColor: "#c8962a", color: "#1a120b" });
-
       decisions.push(`england: agreed ${currentOffer} coins`);
+
+      // The logbook changed (the agreed price is in), so repaint the ledger.
+      refreshHud();
+
+      // Lock the haggle buttons and turn Continue bright gold. Its label flips
+      // to a plain "Continue" - the lock reason is gone because the gate is open.
+      paintButtons();
+
       saleMessage?.setProperties({
-        text: `Agreed: England will pay ${currentOffer} coins. Continue to weigh your final options.`,
+        text: `Deal! England will pay ${currentOffer} coins. Nice trading, Captain!`,
         color: "#9fd29f",
       });
       console.log(
@@ -253,6 +280,9 @@ export class EnglandRulesSystem extends createSystem({
 
     // --- Initial draw + wiring ------------------------------------------------
     renderOffer();
+    // Paint every button from the same function that owns their state, so the
+    // markup defaults can never drift out of sync with the LIVE/LOCKED colors.
+    paintButtons();
     saleMessage?.setProperties({
       text: stormHit
         ? "The storm cost you - England values the damaged hold lower. Haggle, or accept the offer."
@@ -260,19 +290,28 @@ export class EnglandRulesSystem extends createSystem({
       color: "#9fb0bb",
     });
 
-    pushBtn?.addEventListener("click", pushForMore);
-    acceptBtn?.addEventListener("click", accept);
-    continueBtn?.addEventListener("click", () => {
-      // Continue is gated on settling a price (the button also ships dim).
-      if (!settled) {
-        saleMessage?.setProperties({
-          text: "Agree a price first - Push for more, or Accept England's offer.",
-          color: "#e08a5a",
-        });
-        return;
-      }
-      this.proceedToSmugglerStep(entity);
-    });
+    // Every button gets the shared juice: click sound, gold flash, then
+    // paintButtons puts its true colors (and the Continue label) back.
+    if (pushBtn) juiceButton(pushBtn, pushForMore, paintButtons);
+    if (acceptBtn) juiceButton(acceptBtn, accept, paintButtons);
+    if (continueBtn) {
+      juiceButton(
+        continueBtn,
+        () => {
+          // Continue is gated on settling a price (the button ships locked,
+          // wearing its reason - "Agree a price first" - as its label).
+          if (!settled) {
+            saleMessage?.setProperties({
+              text: "Agree a price first - Push for more, or Accept England's offer.",
+              color: "#e08a5a",
+            });
+            return;
+          }
+          this.proceedToSmugglerStep(entity);
+        },
+        paintButtons,
+      );
+    }
   }
 
   /**
@@ -281,7 +320,13 @@ export class EnglandRulesSystem extends createSystem({
    * step reads voyageState.englishSaleAmount, sets the FINAL sale, and then hands
    * off to the existing route map.
    */
+  // Guards against a double-tap on the gold Continue scheduling this handoff
+  // twice (which would dispose the panel twice and raise two smuggler cards).
+  private forwarding = false;
+
   private proceedToSmugglerStep(entity: Entity) {
+    if (this.forwarding) return;
+    this.forwarding = true;
     const world = this.world;
     // Defer one tick so we aren't disposing the very panel whose click is still
     // being dispatched, and strip its interaction tags first so the InputSystem

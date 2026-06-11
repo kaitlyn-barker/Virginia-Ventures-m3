@@ -23,6 +23,12 @@
 // This file mirrors englandRules.ts exactly: a panel + a createSystem matched by
 // its config, wired on the "qualify" subscription, with a deferred, tag-stripped
 // teardown when the screen advances.
+//
+// Drama wiring (shared modules, built once in index.ts): the card's arrival slams
+// the weather to its "raging" phase and rings the ship's bell three times; a
+// jettison arcs that good's deck crates overboard with one more bell; Continue
+// starts the sky "clearing" so England arrives under friendlier weather. The
+// captain's ledger (refreshHud) repaints after every logbook change made here.
 // ----------------------------------------------------------------------------
 
 import {
@@ -45,6 +51,18 @@ import { voyageState, GOOD_SLOTS, STORM_DAMAGE_CHANCE } from "./voyageState.js";
 
 // The reusable tutorial coach: a short teaching card gates the storm decision.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
+
+// Shared drama + polish helpers (each built and registered ONCE in index.ts):
+//   setStormPhase / ringShipBell - sky darkening, ship rocking, rain, and the
+//                                  positional ship's bell at the main mast.
+//   juiceButton                  - click sound + gold flash on every button.
+//   refreshHud                   - repaint the captain's ledger after we touch
+//                                  voyageState (cargo tossed, storm damage).
+//   jettisonCargoProps           - arc the tossed good's deck crates overboard.
+import { setStormPhase, ringShipBell } from "./ambientMotion.js";
+import { juiceButton } from "./uiFx.js";
+import { refreshHud } from "./hud.js";
+import { jettisonCargoProps } from "./cargoProps.js";
 
 // How many cargo slots each good takes up. We read this to find the "highest-slot"
 // good (the heaviest crate) to throw overboard. We only READ it — the values live
@@ -114,8 +132,19 @@ export class StormDecisionSystem extends createSystem({
 
   /** Connect the two storm choices (jettison / ride it out) and Continue. */
   private wirePanel(entity: Entity, doc: UIKitDocument) {
+    // The card is on screen - this IS the storm's big entrance. Slam the weather
+    // to its darkest phase (black sky, hard rocking, rain) and ring the ship's
+    // bell three times - the old "all hands on deck!" signal - so the choice
+    // below feels urgent, not abstract.
+    setStormPhase("raging");
+    ringShipBell(3);
+
     const jettisonBtn = doc.getElementById("jettison") as UIKit.Text | null;
     const rideBtn = doc.getElementById("ride") as UIKit.Text | null;
+    // The label lines INSIDE the two choice cards. Dimming the container does
+    // not recolor these spans, so lockChoices() dims them by id as well.
+    const jettisonLabel = doc.getElementById("jettison-label") as UIKit.Text | null;
+    const rideLabel = doc.getElementById("ride-label") as UIKit.Text | null;
     const message = doc.getElementById("storm-message") as UIKit.Text | null;
     const continueBtn = doc.getElementById("storm-continue") as UIKit.Text | null;
 
@@ -125,17 +154,42 @@ export class StormDecisionSystem extends createSystem({
     // Guard so a second click can't re-decide the storm after a choice is made.
     let decided = false;
 
-    // Dim both choice buttons so they read as locked once a choice is made.
+    // Dim both choice cards so they read as locked once a course is set. The
+    // container dim covers the card itself; the label spans inside keep their
+    // own colors, so we dim those directly too.
     const lockChoices = () => {
       for (const b of [jettisonBtn, rideBtn]) {
         b?.setProperties({ backgroundColor: "#2a323b", color: "#6b7682" });
       }
+      for (const l of [jettisonLabel, rideLabel]) {
+        l?.setProperties({ color: "#6b7682" });
+      }
     };
 
-    // Show the one-line outcome and brighten Continue so the captain can sail on.
+    // Repaint Continue to match its TRUE state: the locked "Choose first" look
+    // (colors straight from ui/stormDecision.uikitml) before a course is set,
+    // bright gold "Continue" after. juiceButton's flash restores through this
+    // too, so a tap can never leave the button painted the wrong way.
+    const paintContinue = () => {
+      if (decided) {
+        continueBtn?.setProperties({
+          text: "Continue",
+          backgroundColor: "#c8962a",
+          color: "#1a120b",
+        });
+      } else {
+        continueBtn?.setProperties({
+          text: "Choose first",
+          backgroundColor: "#3a2f24",
+          color: "#9a8568",
+        });
+      }
+    };
+
+    // Show the big outcome banner and unlock Continue (its label now says so).
     const reveal = (text: string, color: string) => {
       message?.setProperties({ text, color });
-      continueBtn?.setProperties({ backgroundColor: "#c8962a", color: "#1a120b" });
+      paintContinue();
     };
 
     // --- Choice A: throw the heaviest good overboard to stay safe -------------
@@ -156,8 +210,19 @@ export class StormDecisionSystem extends createSystem({
       }
       const tossed = worst >= 0 ? cargo.splice(worst, 1)[0] : undefined;
 
+      // Make the loss VISIBLE: that good's deck crates arc over the rail and
+      // splash into the sea, one bell rings as they go, and the ledger's slot
+      // count drops in the same beat - cause and effect land together. Only ONE
+      // purchase went over the side, so only its slot count of crates may fly -
+      // if the captain bought the same good twice, the other purchase's crates
+      // stay safely on deck (matching what cargoLoaded still holds).
+      if (tossed) jettisonCargoProps(tossed, SLOT_COST[tossed] ?? 1);
+      ringShipBell(1);
+      refreshHud();
+
       decisions.push("storm: jettisoned");
-      reveal("You lightened the load and sailed on safely.", "#9fd29f");
+      const label = tossed ? GOOD_LABEL[tossed] ?? tossed : "cargo";
+      reveal(`You heave the ${label} over the side! The ship steadies.`, "#9fd29f");
       console.log(
         "Captain's Voyage - storm: jettisoned",
         tossed ? GOOD_LABEL[tossed] ?? tossed : "(nothing)",
@@ -176,12 +241,14 @@ export class StormDecisionSystem extends createSystem({
       // The chance comes straight from the STORM_DAMAGE_CHANCE constant.
       if (Math.random() < STORM_DAMAGE_CHANCE) {
         voyageState.stormDamage = true;
-        reveal("You held your cargo, but the storm damaged some of it.", "#e08a5a");
+        reveal("Ouch! The storm damaged your cargo. It will sell for less.", "#e08a5a");
       } else {
-        reveal("You held your cargo and got lucky.", "#9fd29f");
+        reveal("You held on and got lucky! Your cargo is safe.", "#9fd29f");
       }
 
       decisions.push("storm: rode it out");
+      // The logbook changed (and maybe stormDamage too) - repaint the ledger.
+      refreshHud();
       console.log(
         "Captain's Voyage - storm: rode it out. stormDamage:",
         voyageState.stormDamage,
@@ -198,6 +265,10 @@ export class StormDecisionSystem extends createSystem({
         });
         return;
       }
+
+      // The storm is beaten - start the sky re-warming NOW, so England arrives
+      // under clearing weather instead of mid-tempest.
+      setStormPhase("clearing");
 
       const world = this.world;
       // Defer one tick so we aren't disposing the very panel whose click is still
@@ -218,9 +289,13 @@ export class StormDecisionSystem extends createSystem({
       }, 0);
     };
 
-    jettisonBtn?.addEventListener("click", throwOverboard);
-    rideBtn?.addEventListener("click", rideItOut);
-    continueBtn?.addEventListener("click", proceed);
+    // Every button gets the full juice: click sound + a quick gold flash. The
+    // third argument repaints each button's TRUE state after the flash - any
+    // click on a choice card decides the storm, so lockChoices is always the
+    // right restore there, and Continue repaints itself from `decided`.
+    if (jettisonBtn) juiceButton(jettisonBtn, throwOverboard, lockChoices);
+    if (rideBtn) juiceButton(rideBtn, rideItOut, lockChoices);
+    if (continueBtn) juiceButton(continueBtn, proceed, paintContinue);
   }
 }
 

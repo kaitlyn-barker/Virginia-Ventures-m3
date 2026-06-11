@@ -1,15 +1,21 @@
 <!--
   stormDecision.uikitml
   --------------------------------------------------------------------------
-  The STORM AT SEA card — the first gamified decision, shown on the open ocean
-  after leaving Virginia and before reaching England. The captain reads it and
-  chooses: brave the storm (faster, but risk losing a crate) or sail around it
-  (safe hold, but a coin cost in provisions).
+  The STORM AT SEA card - step 2 of the voyage, shown on the open ocean after
+  leaving Virginia and before reaching England. The captain reads it and picks
+  one of two stacked choice cards: the SAFE one (toss a crate overboard) or
+  the RISKY one (hold on and hope the storm spares the cargo).
 
-  This file is just the MARKUP + STYLES (the look). All the behavior — rolling
-  the random outcome and handling Continue — lives in src/stormDecision.ts,
+  This file is just the MARKUP + STYLES (the look). All the behavior - rolling
+  the random outcome and handling Continue - lives in src/stormDecision.ts,
   which finds these elements by their id (#jettison, #ride, #storm-message,
-  #storm-continue) and wires them up.
+  #storm-continue) and wires them up. The label lines inside the choices have
+  their own ids (#jettison-label, #ride-label) so code can dim them too.
+
+  COLOR CODE (same on every card in the game):
+    - gold   #c8962a = tap this (buttons that are ready to press)
+    - green  #9fd29f = good news (safe choices, happy outcomes)
+    - orange #e08a5a = risky or bad news (gambles, damage, warnings)
 
   UIKITML reminders for beginners:
     - <span> is a line of text, <button> is a clickable box, <div> is a container.
@@ -22,8 +28,10 @@
   --------------------------------------------------------------------------
 -->
 <style>
-  /* The whole card: a dark, cold storm-blue panel — the stormy counterpoint to
-     the warm Virginia and parchment cards — laid out as a vertical column. */
+  /* The whole card: a dark, cold storm-blue panel - the stormy counterpoint to
+     the warm Virginia and parchment cards - laid out as a vertical column. The
+     gold frame matches every other card in the voyage, so the set reads as one
+     family of captain's cards. */
   .panel {
     display: flex;
     flex-direction: column;
@@ -31,9 +39,18 @@
     width: 104;
     padding: 4;
     background-color: #0e1518;
-    border-color: #2a3942;
-    border-width: 0.18;
+    border-color: #c8962a;
+    border-width: 0.2;
     border-radius: 3;
+  }
+
+  /* The scene ribbon: a small bold line that names WHERE you are. Cold sky
+     blue, because we are out on the open water. */
+  .ribbon {
+    font-size: 2.4;
+    font-weight: bold;
+    color: #9fc2d6;
+    text-align: left;
   }
 
   /* The title, in a cold stormy blue. */
@@ -44,9 +61,36 @@
     text-align: left;
   }
 
+  /* The voyage step tracker: six little chips, one per step of the trip.
+     The gold chip is where you are RIGHT NOW (the storm is step 2). */
+  .steps {
+    display: flex;
+    flex-direction: row;
+    margin-top: 1;
+    margin-bottom: 1.5;
+  }
+
+  .step {
+    width: 15;
+    padding: 0.6;
+    margin-right: 1;
+    font-size: 2.0;
+    text-align: center;
+    border-radius: 1;
+    background-color: #241a10;
+    color: #8a7860;
+  }
+
+  /* The chip for the step you are on now: bright gold so it pops. */
+  .step-now {
+    background-color: #c8962a;
+    color: #1a120b;
+    font-weight: bold;
+  }
+
   /* A softer line of scene-setting under the title. */
   .subtitle {
-    font-size: 2.2;
+    font-size: 2.6;
     color: #8aa0ad;
     text-align: left;
     margin-top: 0.4;
@@ -55,7 +99,7 @@
 
   /* The decision prompt itself. Wraps onto several lines inside the width. */
   .prompt {
-    font-size: 2.4;
+    font-size: 3;
     color: #e7edf1;
     text-align: left;
     margin-top: 1;
@@ -69,39 +113,76 @@
     align-items: stretch;
   }
 
-  /* Each choice is a clickable cold-steel button. Code dims both once a course
-     is set, so they read as locked. */
+  /* Each choice is a clickable cold-steel card that stacks its tag line on top
+     of its label line. Code dims both once a course is set, so they read as
+     locked. */
   .choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     width: 48;
     margin-right: 1.5;
     padding: 2;
     background-color: #1d2932;
-    color: #e7edf1;
-    border-color: #3f566a;
     border-width: 0.12;
     border-radius: 1.5;
-    font-size: 2.4;
-    font-weight: medium;
-    text-align: center;
     cursor: pointer;
   }
 
-  /* The outcome/status line. Starts as a hint and becomes the result of the
-     captain's choice (a lost crate, a clean passage, or the detour cost). */
+  /* The tag line: one loud word that previews the consequence. */
+  .choice-tag {
+    font-size: 2.4;
+    font-weight: bold;
+  }
+
+  /* SAFE tag = green (good news color), and the safe card gets a green edge. */
+  .tag-safe {
+    color: #9fd29f;
+  }
+
+  .choice-safe {
+    border-color: #5d8a5d;
+  }
+
+  /* RISKY! tag = orange (warning color), and the risky card gets an orange edge. */
+  .tag-risky {
+    color: #e08a5a;
+  }
+
+  .choice-risky {
+    border-color: #a05a3a;
+  }
+
+  /* The action line under the tag: what you actually DO if you pick it. */
+  .choice-label {
+    font-size: 2.6;
+    color: #e7edf1;
+    text-align: center;
+    margin-top: 0.6;
+  }
+
+  /* The outcome banner. Starts as a hint and becomes the BIG result of the
+     captain's choice (a lost crate, a lucky escape, or storm damage). It is
+     the loudest text on the card so the result feels like a moment. */
   .message {
-    font-size: 2.2;
+    font-size: 2.8;
+    font-weight: bold;
     color: #e0b870;
-    text-align: left;
+    text-align: center;
+    padding: 1.4;
+    border-radius: 1.2;
+    background-color: #16212a;
     margin-top: 2.4;
   }
 
-  /* The Continue button. It SHIPS disabled-looking (dim) and the code brightens
-     it to gold once a course has been chosen. */
+  /* The Continue button. It SHIPS locked: its label literally says what to do
+     ("Choose first"), and the code swaps it to a bright gold "Continue" once a
+     course has been chosen. */
   #storm-continue {
     margin-top: 1.6;
     padding: 2;
     background-color: #3a2f24;
-    color: #6e5d48;
+    color: #9a8568;
     border-color: #4a3a28;
     border-width: 0.12;
     border-radius: 1.5;
@@ -113,19 +194,40 @@
 </style>
 
 <div class="panel">
+  <!-- The ribbon names the scene, the title names the moment. -->
+  <span class="ribbon">OPEN OCEAN</span>
   <span class="title">Storm at Sea</span>
+
+  <!-- The step tracker: you are on step 2 of 6 (the gold chip). -->
+  <div class="steps">
+    <span class="step">1 Load</span>
+    <span class="step step-now">2 Storm</span>
+    <span class="step">3 Sell</span>
+    <span class="step">4 Deal</span>
+    <span class="step">5 Map</span>
+    <span class="step">6 Score</span>
+  </div>
+
   <span class="subtitle">Mid-Atlantic, the sky turns black and the swell rises.</span>
 
   <!-- The decision. Wording kept ASCII-only (no em-dash glyph in the panel font). -->
   <span class="prompt">A storm is battering the ship! Heavy cargo is making it list dangerously.</span>
 
-  <!-- The two choices. Their labels are baked in here (code only dims them). -->
+  <!-- The two choices, each a tag + label stack. The 4-in-10 odds match the
+       STORM_DAMAGE_CHANCE constant (0.4) in src/voyageState.js. -->
   <div class="choices">
-    <button id="jettison" class="choice">Throw some cargo overboard to stay safe</button>
-    <button id="ride" class="choice">Hold on and ride it out</button>
+    <div id="jettison" class="choice choice-safe">
+      <span class="choice-tag tag-safe">SAFE</span>
+      <span id="jettison-label" class="choice-label">Toss one crate overboard</span>
+    </div>
+    <div id="ride" class="choice choice-risky">
+      <span class="choice-tag tag-risky">RISKY!</span>
+      <span id="ride-label" class="choice-label">Hold on and hope. 4 in 10 ships get damaged.</span>
+    </div>
   </div>
 
-  <!-- The status line (code rewrites it with the outcome) + the Continue button. -->
+  <!-- The outcome banner (code rewrites it with the result) + the Continue
+       button (code swaps its label to "Continue" and turns it gold). -->
   <span id="storm-message" class="message">Choose your course, Captain.</span>
-  <button id="storm-continue">Continue</button>
+  <button id="storm-continue">Choose first</button>
 </div>

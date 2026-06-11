@@ -6,13 +6,21 @@
 // for the same cargo — illegally. The student picks one of two buyers:
 //   • Sell to England (legal)   — take the haggled price (englishSaleAmount).
 //                                 Crown Compliance stays put.
-//   • Sell to the smuggler (illegal) — a genuine GAMBLE. Roll against
-//                                 SMUGGLE_DISCOVERY_CHANCE:
+//   • Sell to the smuggler (illegal) — a genuine GAMBLE, played as a SUSPENSE
+//                                 BEAT: the buttons lock, "customs lanterns swing
+//                                 closer", one soft bell rings, and only 1.4
+//                                 seconds later does the roll against
+//                                 SMUGGLE_DISCOVERY_CHANCE land:
 //                                   - got away: the full (bigger) smuggler payout,
-//                                     a modest Compliance hit.
+//                                     a modest Compliance hit, a green card edge,
+//                                     one all-clear bell.
 //                                   - caught:  cargo mostly seized + a fine, so you
-//                                     keep only a fraction of England's price, and
-//                                     a big Compliance hit.
+//                                     keep only a fraction of England's price, a
+//                                     big Compliance hit, a red-brown card edge,
+//                                     and three fast customs bells.
+//
+// After ANY sale the deck crates are carried off (removeAllCargoProps) and the
+// captain's ledger HUD repaints (refreshHud), so the world matches the logbook.
 //
 // This is the step that SETS THE FINAL PROFIT and changes crownCompliance, then
 // hands off to the EXISTING route map (returnHomeMap.ts) — we don't rebuild the
@@ -55,6 +63,16 @@ import { beginReturnHomeMap } from "./returnHomeMap.js";
 
 // The reusable tutorial coach: a short teaching card gates the smuggler's offer.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
+
+// Shared polish helpers (all built once in index.ts — we just call them):
+//   ringShipBell      — the positional ship's bell at the main mast.
+//   juiceButton       — click sound + gold flash on every player-facing button.
+//   refreshHud        — repaint the captain's ledger after logbook changes.
+//   removeAllCargoProps — clear the deck crates once the cargo is sold/seized.
+import { ringShipBell } from "./ambientMotion.js";
+import { juiceButton } from "./uiFx.js";
+import { refreshHud } from "./hud.js";
+import { removeAllCargoProps } from "./cargoProps.js";
 
 // A typed view of the smuggler's price list (we only READ it).
 const SMUGGLER_VALUE = SMUGGLER_PRICE as Record<string, number>;
@@ -116,10 +134,15 @@ export class SmugglerOfferSystem extends createSystem({
 
   /** Show both offers and connect the buyer choice + Continue. */
   private wirePanel(entity: Entity, doc: UIKitDocument) {
+    // The whole card first (so outcomes can recolor its border), then every
+    // line and button we fill in or wire up — all ids live in the markup.
+    const card = doc.getElementById("smuggler-card") as UIKit.Text | null;
     const englandAmountText = doc.getElementById("england-amount") as UIKit.Text | null;
     const smugglerAmountText = doc.getElementById("smuggler-amount") as UIKit.Text | null;
     const sellEnglandBtn = doc.getElementById("sell-england") as UIKit.Text | null;
     const sellSmugglerBtn = doc.getElementById("sell-smuggler") as UIKit.Text | null;
+    const sellEnglandLabel = doc.getElementById("sell-england-label") as UIKit.Text | null;
+    const sellSmugglerLabel = doc.getElementById("sell-smuggler-label") as UIKit.Text | null;
     const outcome = doc.getElementById("smuggler-message") as UIKit.Text | null;
     const continueBtn = doc.getElementById("smuggler-continue") as UIKit.Text | null;
 
@@ -137,26 +160,66 @@ export class SmugglerOfferSystem extends createSystem({
       smugglerTotal += SMUGGLER_VALUE[good] ?? 0;
     }
 
-    // Guard so a second click can't re-decide the sale after a choice is made.
+    // TWO small flags guard the flow:
+    //   choiceLocked — a buyer has been clicked, so both buyer buttons stop
+    //                  working (no re-deciding the sale).
+    //   decided      — the sale has actually RESOLVED. England resolves at once;
+    //                  the smuggler takes a 1.4 second suspense beat first.
+    //                  Continue only unlocks when this is true.
+    let choiceLocked = false;
     let decided = false;
 
-    // Dim both buyer buttons so they read as locked once a choice is made.
+    // Dim both buyer buttons (and their label lines) so they read as locked.
     const lockChoices = () => {
       for (const b of [sellEnglandBtn, sellSmugglerBtn]) {
         b?.setProperties({ backgroundColor: "#2a3942", color: "#6b7682" });
       }
+      for (const label of [sellEnglandLabel, sellSmugglerLabel]) {
+        label?.setProperties({ color: "#6b7682" });
+      }
     };
 
-    // Show the plain-language outcome and brighten Continue so the player sails on.
+    // After juiceButton's gold flash, repaint the buyer buttons' TRUE state:
+    // locked-dim once a choice is made, or their markup colors before then.
+    const repaintBuyers = () => {
+      if (choiceLocked) {
+        lockChoices();
+        return;
+      }
+      sellEnglandBtn?.setProperties({ backgroundColor: "#1d2932", color: "#e7edf1" });
+      sellSmugglerBtn?.setProperties({ backgroundColor: "#3a211c", color: "#e7edf1" });
+    };
+
+    // Show the big outcome banner and unlock Continue: it goes gold AND its
+    // label flips from "Pick a buyer first" to a plain "Continue".
     const reveal = (text: string, color: string) => {
       outcome?.setProperties({ text, color });
-      continueBtn?.setProperties({ backgroundColor: "#c8962a", color: "#1a120b" });
+      continueBtn?.setProperties({
+        text: "Continue",
+        backgroundColor: "#c8962a",
+        color: "#1a120b",
+      });
+    };
+
+    // After Continue's click-flash, repaint ITS true state: gold once the sale
+    // has resolved, otherwise the dim locked look it shipped with.
+    const repaintContinue = () => {
+      if (decided) {
+        continueBtn?.setProperties({
+          text: "Continue",
+          backgroundColor: "#c8962a",
+          color: "#1a120b",
+        });
+      } else {
+        continueBtn?.setProperties({ backgroundColor: "#2a3942", color: "#93a0ab" });
+      }
     };
 
     // --- Sell to England: the LEGAL sale. Take the haggled price as-is. --------
     const sellToEngland = () => {
-      if (decided) return;
-      decided = true;
+      if (choiceLocked) return;
+      choiceLocked = true;
+      decided = true; // the legal sale resolves instantly — no gamble to roll
       lockChoices();
 
       voyageState.soldVia = "england";
@@ -165,9 +228,13 @@ export class SmugglerOfferSystem extends createSystem({
       decisions.push("sale: england (legal)");
 
       reveal(
-        `You sell to England for ${englishAmount} coins, by the Crown's rules. The Crown is satisfied - Compliance holds at ${voyageState.crownCompliance}.`,
+        `A fair, legal sale! England pays ${englishAmount} coins. The King is pleased. Crown Compliance holds at ${voyageState.crownCompliance} / 100.`,
         "#9fd29f",
       );
+
+      // The cargo is sold and carried off the deck; the ledger HUD catches up.
+      removeAllCargoProps();
+      refreshHud();
       console.log(
         "Captain's Voyage - sold to England. soldVia:",
         voyageState.soldVia,
@@ -179,75 +246,118 @@ export class SmugglerOfferSystem extends createSystem({
     };
 
     // --- Sell to the smuggler: ILLEGAL, and a genuine gamble ------------------
+    // Played as a SUSPENSE BEAT: lock the buttons, show the held-breath line,
+    // ring one soft bell... then a single one-shot 1.4 second timer rolls the
+    // dice and reveals. Continue stays locked until the roll lands (decided
+    // only flips inside the timeout), so nobody can sail off mid-gamble.
     const sellToSmuggler = () => {
-      if (decided) return;
-      decided = true;
+      if (choiceLocked) return;
+      choiceLocked = true;
       lockChoices();
 
       voyageState.soldVia = "smuggler";
+      // BUGFIX: the logbook's soldToSmuggler flag was never set before.
+      voyageState.soldToSmuggler = true;
+      refreshHud();
 
-      // The gamble: a SMUGGLE_DISCOVERY_CHANCE (30%) chance the Crown catches you.
-      const caught = Math.random() < SMUGGLE_DISCOVERY_CHANCE;
+      // The held-breath moment: warm "info" gold while the lanterns close in.
+      outcome?.setProperties({
+        text: "You hand the cargo over in the dark... customs lanterns swing closer.",
+        color: "#e0b870",
+      });
+      ringShipBell(1);
 
-      if (!caught) {
-        // Got away with it: the full, bigger smuggler payout; a modest hit.
-        voyageState.profit = smugglerTotal;
-        voyageState.crownCompliance = Math.max(
-          0,
-          voyageState.crownCompliance - SMUGGLE_SUCCESS_COMPLIANCE_PENALTY,
+      setTimeout(() => {
+        // The gamble: a SMUGGLE_DISCOVERY_CHANCE (30%) chance the Crown catches you.
+        const caught = Math.random() < SMUGGLE_DISCOVERY_CHANCE;
+
+        if (!caught) {
+          // Got away with it: the full, bigger smuggler payout; a modest hit.
+          voyageState.profit = smugglerTotal;
+          voyageState.crownCompliance = Math.max(
+            0,
+            voyageState.crownCompliance - SMUGGLE_SUCCESS_COMPLIANCE_PENALTY,
+          );
+          decisions.push("sale: smuggler (got away)");
+          // The whole card's edge turns green, and one low all-clear bell rings.
+          card?.setProperties({ borderColor: "#9fd29f" });
+          reveal(
+            `You got away with it! The smuggler pays ${smugglerTotal} coins. Crown Compliance slips to ${voyageState.crownCompliance} / 100.`,
+            "#9fd29f",
+          );
+          ringShipBell(1);
+        } else {
+          // Caught: cargo mostly seized + a fine. Keep only a fraction of England's
+          // price, and take a heavy Compliance hit.
+          voyageState.caughtSmuggling = true;
+          const fineProfit = Math.round(englishAmount * CAUGHT_PROFIT_PCT);
+          voyageState.profit = fineProfit;
+          voyageState.crownCompliance = Math.max(
+            0,
+            voyageState.crownCompliance - SMUGGLE_CAUGHT_COMPLIANCE_PENALTY,
+          );
+          decisions.push("sale: smuggler (caught)");
+          // The card's edge flushes the illicit red-brown, and three fast
+          // customs bells raise the alarm.
+          card?.setProperties({ borderColor: "#8a4636" });
+          reveal(
+            `Caught! Customs seize most of your cargo. You keep only ${fineProfit} coins. Crown Compliance crashes to ${voyageState.crownCompliance} / 100.`,
+            "#e08a5a",
+          );
+          ringShipBell(3, 250);
+        }
+
+        // Either way the cargo leaves the deck, the ledger HUD repaints, and
+        // ONLY NOW does Continue unlock.
+        removeAllCargoProps();
+        refreshHud();
+        decided = true;
+        console.log(
+          "Captain's Voyage - smuggled. caught:",
+          caught,
+          "profit:",
+          voyageState.profit,
+          "crownCompliance:",
+          voyageState.crownCompliance,
         );
-        decisions.push("sale: smuggler (got away)");
-        reveal(
-          `The deal goes clean! The smuggler pays ${smugglerTotal} coins - well above England's price. Crown Compliance slips to ${voyageState.crownCompliance}.`,
-          "#9fd29f",
-        );
-      } else {
-        // Caught: cargo mostly seized + a fine. Keep only a fraction of England's
-        // price, and take a heavy Compliance hit.
-        voyageState.caughtSmuggling = true;
-        const fineProfit = Math.round(englishAmount * CAUGHT_PROFIT_PCT);
-        voyageState.profit = fineProfit;
-        voyageState.crownCompliance = Math.max(
-          0,
-          voyageState.crownCompliance - SMUGGLE_CAUGHT_COMPLIANCE_PENALTY,
-        );
-        decisions.push("sale: smuggler (caught)");
-        reveal(
-          `Customs catch you! The cargo is mostly seized and you are fined - you walk away with just ${fineProfit} coins. Crown Compliance crashes to ${voyageState.crownCompliance}.`,
-          "#e08a5a",
-        );
-      }
-      console.log(
-        "Captain's Voyage - smuggled. caught:",
-        caught,
-        "profit:",
-        voyageState.profit,
-        "crownCompliance:",
-        voyageState.crownCompliance,
-      );
+      }, 1400);
     };
 
     // --- Initial draw + wiring ------------------------------------------------
     englandAmountText?.setProperties({ text: `${englishAmount} coins` });
     smugglerAmountText?.setProperties({ text: `${smugglerTotal} coins` });
     outcome?.setProperties({
-      text: `Take England's legal ${englishAmount} coins, or risk the smuggler's ${smugglerTotal}?`,
+      text: `Take England's legal ${englishAmount} coins, or gamble on the smuggler's ${smugglerTotal} coins?`,
       color: "#9fb0bb",
     });
 
-    sellEnglandBtn?.addEventListener("click", sellToEngland);
-    sellSmugglerBtn?.addEventListener("click", sellToSmuggler);
-    continueBtn?.addEventListener("click", () => {
-      // Continue is gated on a sale (the button also ships dim until then).
-      if (!decided) {
-        outcome?.setProperties({
-          text: "Choose a buyer first - England, or the smuggler.",
-          color: "#e08a5a",
-        });
-        return;
-      }
-      this.handleContinue(entity);
-    });
+    // Every player-facing button gets the shared juice (click sound + gold
+    // flash). The restore callbacks repaint each button's TRUE current state
+    // once the flash fades, so a flash can never strand a wrong color.
+    if (sellEnglandBtn) juiceButton(sellEnglandBtn, sellToEngland, repaintBuyers);
+    if (sellSmugglerBtn) juiceButton(sellSmugglerBtn, sellToSmuggler, repaintBuyers);
+    if (continueBtn) {
+      juiceButton(
+        continueBtn,
+        () => {
+          // Continue is gated on a RESOLVED sale (it also ships dim + labeled
+          // "Pick a buyer first" until then).
+          if (!decided) {
+            // Mid-suspense (a buyer IS picked, the roll just hasn't landed),
+            // stay quiet so the lanterns line keeps the screen.
+            if (!choiceLocked) {
+              outcome?.setProperties({
+                text: "Pick a buyer first - England, or the smuggler.",
+                color: "#e08a5a",
+              });
+            }
+            return;
+          }
+          this.handleContinue(entity);
+        },
+        repaintContinue,
+      );
+    }
   }
 
   /** Leave England for good and head home — exactly as the old England code did. */
@@ -255,6 +365,7 @@ export class SmugglerOfferSystem extends createSystem({
     // Advance the logbook to leg 3 (the journey home) — the SAME value the route
     // map + summary already expect, so they pick up from here unchanged.
     voyageState.currentLeg = "leg3";
+    refreshHud();
     console.log(
       "Captain's Voyage - leaving England. soldVia:",
       voyageState.soldVia,

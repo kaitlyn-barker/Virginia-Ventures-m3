@@ -2,20 +2,32 @@
   voyageSummary.uikitml
   --------------------------------------------------------------------------
   The VOYAGE SUMMARY card - the final screen of the experience. After the
-  route map finishes animating the ship home, this card appears. It shows the
-  student their TWO scores and the lesson takeaway, then offers a single
-  "Finish" button to end the voyage.
+  route map finishes animating the ship home, this card appears. It is the
+  CELEBRATION screen: a praise line, the step tracker on its last chip, the
+  three scores (each with a small hint saying what it means), a row of three
+  stars, a gold "medal band" naming the captain's play-style rank, the lesson
+  takeaway, and two buttons - Sail Again and Finish.
 
-  There are THREE scores:
-    - Cargo Value      (England's list valuation of the hold)
-    - Profit           (actual coins kept: sale - buy cost - storm detour)
-    - Crown Compliance (how well the Crown's trade rules were followed)
-  The number values are filled in at runtime from voyageState (see
-  src/voyageSummary.ts), so the spans start with a "0" placeholder - never
-  empty, or the runtime text-set would be ignored.
+  The three scores:
+    - Cargo Value      (what England said the hold was worth)
+    - Profit           (the coins the captain actually keeps)
+    - Crown Compliance (100 is a perfect record; smuggling lowers it)
+  The values are filled in at runtime from voyageState (see
+  src/voyageSummary.ts), so each span starts with a placeholder in the SAME
+  format the code writes ("0 coins", "0 / 100") - never empty, or the runtime
+  text-set would be ignored.
+
+  The stars (ids star-1..star-3) start dim; the scoring ceremony recolors the
+  earned ones to gold at runtime. They MUST keep their "*" body for the same
+  non-empty-text reason.
+
+  Color meanings (the same kit every card uses):
+    - gold   #c8962a = something you can tap
+    - green  #9fd29f = good news
+    - orange #e08a5a = risky or bad news
 
   UIKITML reminders for beginners:
-    - <div> is a container, <span> is a line of text.
+    - <div> is a container, <span> is a line of text, <button> is tappable.
     - Sizes are in CENTIMETERS (width: 116 means 116cm), not pixels.
   --------------------------------------------------------------------------
 -->
@@ -30,7 +42,7 @@
     padding: 5;
     background-color: #f3e9d2; /* PALETTE.CREAM - aged paper */
     border-color: #c8962a; /* PALETTE.GOLD - a gilt border */
-    border-width: 0.3;
+    border-width: 0.2;
     border-radius: 3;
   }
 
@@ -40,10 +52,48 @@
     font-weight: bold;
     color: #5b3a21; /* PALETTE.SHIP_WOOD */
     text-align: center;
-    margin-bottom: 3.5;
+    margin-bottom: 2;
   }
 
-  /* One score line: a name on the left, its value on the right. */
+  /* The voyage step tracker: six little chips, one per step of the trip.
+     This is the LAST screen, so chip "6 Score" is the lit (gold) one. The
+     other chips use a parchment tint so they sit quietly on this page. */
+  .steps {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 1;
+    margin-bottom: 1.5;
+  }
+
+  .step {
+    width: 15;
+    padding: 0.6;
+    margin-right: 1;
+    font-size: 2;
+    text-align: center;
+    border-radius: 1;
+    background-color: #ece0c4; /* parchment band - a step already sailed */
+    color: #9a8a6a;
+  }
+
+  /* The step we are on RIGHT NOW: gold, with dark ink. */
+  .step-now {
+    background-color: #c8962a; /* PALETTE.GOLD */
+    color: #1a120b;
+    font-weight: bold;
+  }
+
+  /* The praise line under the title - every captain earns a "well done". */
+  .bravo {
+    font-size: 3;
+    color: #9a6a12; /* deep gold ink */
+    text-align: center;
+    margin-bottom: 2.5;
+  }
+
+  /* One score line: a name (plus a small hint) on the left, its value on
+     the right. */
   .score-row {
     display: flex;
     flex-direction: row;
@@ -55,15 +105,31 @@
     padding-right: 3;
     margin-bottom: 1.5;
     background-color: #ece0c4; /* a slightly deeper parchment band */
+    border-color: #c8962a; /* the gilt kit border, on every card piece */
+    border-width: 0.2;
     border-radius: 2;
+  }
+
+  /* The left half of a score row: the name stacked over its hint. */
+  .score-left {
+    display: flex;
+    flex-direction: column;
   }
 
   /* The score's name (left side). */
   .score-name {
-    font-size: 3.4;
+    font-size: 3.6;
     font-weight: medium;
     color: #5b3a21;
     text-align: left;
+  }
+
+  /* A one-line hint that says what the score MEANS, in plain words. */
+  .score-hint {
+    font-size: 2;
+    color: #8a6f4a;
+    text-align: left;
+    margin-top: 0.3;
   }
 
   /* The score's number (right side), highlighted in gold. */
@@ -74,27 +140,60 @@
     text-align: right;
   }
 
-  /* The play-style rank title (NEW): a bold gold line naming how the captain
-     played, sitting above the takeaway. */
+  /* The star row: three big stars that start DIM. The scoring ceremony
+     turns the earned ones gold one at a time, with a bell ding each. */
+  .stars {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    margin-top: 1.5;
+  }
+
+  .star {
+    font-size: 8;
+    font-weight: bold;
+    color: #d8cca8; /* dim parchment-grey: a star NOT yet earned */
+    text-align: center;
+    margin-left: 1.5;
+    margin-right: 1.5;
+  }
+
+  /* The rank "medal band": a solid gold ribbon around the rank name, so the
+     rank reads like a medal pinned to the page. */
+  .rank-band {
+    display: flex;
+    justify-content: center;
+    align-self: center;
+    padding-top: 1.4;
+    padding-bottom: 1.4;
+    padding-left: 5;
+    padding-right: 5;
+    margin-top: 2.5;
+    background-color: #c8962a; /* PALETTE.GOLD */
+    border-color: #9a6a12; /* a darker gold rim around the medal */
+    border-width: 0.18;
+    border-radius: 2;
+  }
+
+  /* The play-style rank name, in dark ink ON the gold medal band. */
   .rank {
     font-size: 4.2;
     font-weight: bold;
-    color: #9a6a12; /* the same deep gold as the score numbers */
+    color: #1a120b; /* near-black ink reads cleanly on gold */
     text-align: center;
-    margin-top: 2.5;
   }
 
-  /* The one-line rank description (NEW), in the same brown ink as the takeaway. */
+  /* The one-line rank description, in the same brown ink as the takeaway. */
   .rank-desc {
-    font-size: 2.6;
+    font-size: 3;
     color: #5b3a21; /* PALETTE.SHIP_WOOD */
     text-align: center;
     margin-top: 0.6;
   }
 
-  /* The lesson takeaway paragraph under the scores. */
+  /* The lesson takeaway paragraph under the rank. */
   .takeaway {
-    font-size: 2.9;
+    font-size: 3.2;
     color: #5b3a21;
     text-align: left;
     line-height: 1.35;
@@ -102,56 +201,121 @@
     margin-bottom: 4;
   }
 
-  /* The single Finish button: a solid gold bar with dark text. */
-  .finish {
+  /* The button row at the bottom: Sail Again and Finish side by side. */
+  .actions {
     display: flex;
-    align-items: center;
+    flex-direction: row;
     justify-content: center;
+  }
+
+  /* Sail Again: the bright gold button (gold = tap this) for one more trip. */
+  .sail-again {
+    width: 50;
+    margin-right: 2;
     padding-top: 2.6;
     padding-bottom: 2.6;
     background-color: #c8962a; /* PALETTE.GOLD */
+    border-color: #9a6a12;
+    border-width: 0.18;
     border-radius: 2.5;
-    font-size: 3.6;
+    font-size: 3.4;
     font-weight: bold;
     color: #1a120b; /* near-black ink reads cleanly on gold */
     text-align: center;
+    cursor: pointer;
+  }
+
+  /* Finish: the quieter parchment-band button that ends the voyage. */
+  .finish {
+    width: 50;
+    padding-top: 2.6;
+    padding-bottom: 2.6;
+    background-color: #ece0c4; /* the deeper parchment band */
+    border-color: #c8962a; /* a gold rim says "still tappable" */
+    border-width: 0.2;
+    border-radius: 2.5;
+    font-size: 3.4;
+    font-weight: bold;
+    color: #5b3a21; /* brown ink on parchment */
+    text-align: center;
+    cursor: pointer;
   }
 </style>
 
 <div class="card">
   <span class="title">Voyage Summary</span>
 
-  <!-- Score 1: Cargo Value. The value span is filled in at runtime. -->
-  <div class="score-row">
-    <span class="score-name">Cargo Value</span>
-    <span id="cargo-value" class="score-value">0</span>
+  <!-- The step tracker, lit on the final chip: 6 Score. -->
+  <div class="steps">
+    <span class="step">1 Load</span>
+    <span class="step">2 Storm</span>
+    <span class="step">3 Sell</span>
+    <span class="step">4 Deal</span>
+    <span class="step">5 Map</span>
+    <span class="step step-now">6 Score</span>
   </div>
 
-  <!-- Score 2: Profit. Actual coins kept (sale - buy cost - storm detour),
-       computed and filled in at runtime. -->
+  <!-- Every captain gets a cheer before the numbers. -->
+  <span class="bravo">Well sailed, Captain! You crossed the Atlantic and back.</span>
+
+  <!-- Score 1: Cargo Value. The value span is filled in at runtime, so its
+       placeholder matches the runtime format: "0 coins". -->
   <div class="score-row">
-    <span class="score-name">Profit</span>
-    <span id="profit" class="score-value">0</span>
+    <div class="score-left">
+      <span class="score-name">Cargo Value</span>
+      <span class="score-hint">What England said your goods were worth</span>
+    </div>
+    <span id="cargo-value" class="score-value">0 coins</span>
   </div>
 
-  <!-- Score 3: Crown Compliance. Filled in at runtime (drops if you smuggled). -->
+  <!-- Score 2: Profit. The coins the captain actually keeps, computed and
+       filled in at runtime. -->
   <div class="score-row">
-    <span class="score-name">Crown Compliance</span>
-    <span id="crown-compliance" class="score-value">0</span>
+    <div class="score-left">
+      <span class="score-name">Profit</span>
+      <span class="score-hint">Coins you keep</span>
+    </div>
+    <span id="profit" class="score-value">0 coins</span>
   </div>
 
-  <!-- Play-style rank (NEW): a rank name + one-line description, chosen at runtime
-       from soldVia / caughtSmuggling / crownCompliance (see voyageSummary.ts).
-       Sits ABOVE the takeaway. Placeholders so the runtime text-set isn't ignored. -->
-  <span id="rank" class="rank">Rank</span>
+  <!-- Score 3: Crown Compliance. Filled in at runtime (drops if you smuggled),
+       so the placeholder matches the "0 / 100" runtime format. -->
+  <div class="score-row">
+    <div class="score-left">
+      <span class="score-name">Crown Compliance</span>
+      <span class="score-hint">100 is a perfect record</span>
+    </div>
+    <span id="crown-compliance" class="score-value">0 / 100</span>
+  </div>
+
+  <!-- The three stars. They ship dim; the scoring ceremony recolors each
+       earned star to gold at runtime. The "*" body must stay non-empty or
+       the runtime recolor would be ignored. (The panel font is missing many
+       fancy glyphs, so a plain ASCII asterisk is the safe star.) -->
+  <div class="stars">
+    <span id="star-1" class="star">*</span>
+    <span id="star-2" class="star">*</span>
+    <span id="star-3" class="star">*</span>
+  </div>
+
+  <!-- The play-style rank, worn like a medal: a gold band around the rank
+       name, then a one-line description. Both are chosen at runtime from
+       soldVia / caughtSmuggling / crownCompliance (see voyageSummary.ts).
+       Placeholders so the runtime text-set isn't ignored. -->
+  <div class="rank-band">
+    <span id="rank" class="rank">Rank</span>
+  </div>
   <span id="rank-desc" class="rank-desc">Your play-style rank.</span>
 
-  <!-- The lesson, in the student's own words back to them. NOTE: the panel font
-       has no em-dash (—) glyph - it renders as a broken box - so the dash here is
-       a plain ASCII hyphen, the same rule the englandRules card follows. The
-       wording is otherwise verbatim. -->
-  <span id="takeaway" class="takeaway">England's rules shaped every choice you made - what you could carry, who you could sell to, and where the wealth ended up. That was mercantilism.</span>
+  <!-- The lesson, in short plain words. NOTE: the panel font has no em-dash
+       glyph - it renders as a broken box - so every dash here is a plain
+       ASCII hyphen, the same rule the englandRules card follows. -->
+  <span id="takeaway" class="takeaway">England's rules shaped your whole trip - what you carried, who you sold to, and who got rich. That is mercantilism.</span>
 
-  <!-- The one and only interaction on this screen. -->
-  <span id="finish-btn" class="finish">Finish</span>
+  <!-- The two ways out: sail again (gold = go!) or finish for good. The
+       Sail Again button is wired up at runtime by its id. -->
+  <div class="actions">
+    <button id="sail-again" class="sail-again">Sail Again!</button>
+    <button id="finish-btn" class="finish">Finish my voyage</button>
+  </div>
 </div>

@@ -16,6 +16,16 @@ import { LocomotionSystem, SessionMode, World } from "@iwsdk/core";
 // The shared environment builder (sky + sun + ocean + ship from primitives).
 import { createVoyageEnvironment } from "./environment.js";
 
+// The motion system: drifting sea, bobbing ship, circling gulls, fluttering
+// pennant — and the storm weather (other files flip it with setStormPhase).
+import { registerAmbientMotion } from "./ambientMotion.js";
+
+// Game-feel plumbing: the shared UI click sound, the visible deck cargo, and
+// the always-on captain's ledger HUD.
+import { createUiSounds } from "./uiFx.js";
+import { registerCargoProps } from "./cargoProps.js";
+import { createHud, refreshHud } from "./hud.js";
+
 // The Virginia leg's port scenery (dock, cargo, shore, sign) — sits on the base.
 import { createVirginiaPort } from "./virginiaPort.js";
 
@@ -102,6 +112,15 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   // ocean, and sun in case you want to animate or reposition them later.
   const env = createVoyageEnvironment(world);
 
+  // Bring the world to life: gentle sea/ship/gull/pennant motion every frame,
+  // plus the storm weather machine and the ship's bell.
+  registerAmbientMotion(world, env);
+
+  // The shared UI click sound (every button taps back) and the deck-cargo
+  // props (real crates appear on deck as goods are bought).
+  createUiSounds(world);
+  registerCargoProps(world, env.shipGroup);
+
   // Crew the ship: a few sailors at work on the deck and a lookout at the bow.
   // They parent to the PERSISTENT ship group, so they sail along through every
   // leg rather than being torn down with each port's scenery.
@@ -150,6 +169,11 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   // screen at a time.
   showWelcome(world, () => {
     showTutorial(world, TUTORIALS.virginia, () => {
+      // The captain's ledger HUD appears with the first real gameplay screen
+      // (showing it over the welcome/tutorial cards would just be clutter) and
+      // then stays up for the whole voyage.
+      createHud(world);
+      refreshHud();
       const cargoPanel = createCargoPanel(world);
       registerVirginiaPhase(world, [virginiaPort, cargoPanel]);
     });

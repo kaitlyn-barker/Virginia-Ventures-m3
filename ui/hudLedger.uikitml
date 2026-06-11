@@ -1,0 +1,98 @@
+<!--
+  hudLedger.uikitml
+  --------------------------------------------------------------------------
+  The CAPTAIN'S LEDGER - a small always-on scoreboard that floats above the
+  phase cards for the whole voyage. It shows the three numbers the student is
+  playing for: cargo slots filled, coins spent/earned, and the Crown
+  Compliance meter (ten little segments that go dark as the score drops).
+
+  All values are written at runtime by src/hud.ts (refreshHud), so every
+  value element here starts with REAL placeholder text - an empty element
+  would be trimmed away and code could never fill it in. The ten compliance
+  segments each hold a "." whose ink color always matches the segment's
+  background, so the dot itself is invisible - the segment reads as a solid
+  block of color.
+
+  UIKITML reminders: sizes are centimeters; ASCII text only.
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The ledger strip: one dark wooden bar with the standard gold frame. */
+  .hud {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding: 1.6;
+    background-color: #17120c;
+    border-color: #c8962a;
+    border-width: 0.2;
+    border-radius: 2;
+  }
+
+  /* One stat block: a small label over its value. */
+  .hud-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: 2;
+    margin-right: 2;
+  }
+
+  .hud-label {
+    font-size: 2.0;
+    font-weight: bold;
+    color: #c9b896;
+    text-align: center;
+  }
+
+  .hud-value {
+    font-size: 2.8;
+    font-weight: bold;
+    color: #e0b870;
+    text-align: center;
+    margin-top: 0.4;
+  }
+
+  /* The Crown Compliance meter: ten solid segments, gold while earned. */
+  .comp-row {
+    display: flex;
+    flex-direction: row;
+    margin-top: 0.7;
+  }
+
+  .comp-seg {
+    width: 3.4;
+    margin-right: 0.45;
+    border-radius: 0.5;
+    background-color: #c8962a;
+    color: #c8962a; /* same as background: the "." placeholder stays invisible */
+    font-size: 2.0;
+    text-align: center;
+  }
+</style>
+
+<div class="hud">
+  <div class="hud-block">
+    <span class="hud-label">CARGO</span>
+    <span id="hud-cargo" class="hud-value">0 / 6 slots</span>
+  </div>
+  <div class="hud-block">
+    <span class="hud-label">COINS</span>
+    <span id="hud-coins" class="hud-value">Spent 0 coins</span>
+  </div>
+  <div class="hud-block">
+    <span class="hud-label">CROWN COMPLIANCE</span>
+    <div class="comp-row">
+      <span id="comp-1" class="comp-seg">.</span>
+      <span id="comp-2" class="comp-seg">.</span>
+      <span id="comp-3" class="comp-seg">.</span>
+      <span id="comp-4" class="comp-seg">.</span>
+      <span id="comp-5" class="comp-seg">.</span>
+      <span id="comp-6" class="comp-seg">.</span>
+      <span id="comp-7" class="comp-seg">.</span>
+      <span id="comp-8" class="comp-seg">.</span>
+      <span id="comp-9" class="comp-seg">.</span>
+      <span id="comp-10" class="comp-seg">.</span>
+    </div>
+  </div>
+</div>

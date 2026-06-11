@@ -36,13 +36,21 @@ import { voyageState, GOOD_SLOTS, GOOD_COST } from "./voyageState.js";
 // scenery (this very panel included) and raises the England port in its place.
 import { sailToEngland } from "./voyagePhases.js";
 
+// Shared polish helpers (built once in index.ts — we just call them):
+//   juiceButton    — wires a click with sound + a quick gold flash.
+//   refreshHud     — repaints the captain's ledger after any cargo change.
+//   addCargoProps  — pops real crates onto the deck for each slot we fill.
+import { juiceButton } from "./uiFx.js";
+import { refreshHud } from "./hud.js";
+import { addCargoProps } from "./cargoProps.js";
+
 // Display info for each good: a friendly label and the color its filled cargo
 // slots turn. These are presentation only — the slot COSTS come from
 // GOOD_SLOTS in voyageState.js, never hard-coded here.
 const GOOD_INFO: Record<string, { label: string; color: string }> = {
-  tobacco: { label: "Tobacco", color: "#8a9a4f" }, // dried tobacco-leaf green
-  lumber: { label: "Lumber", color: "#7a5230" }, //  sawn-wood brown
-  furs: { label: "Furs", color: "#9a6f4e" }, //     soft pelt tan
+  tobacco: { label: "Tobacco", color: "#a9b964" }, // bright tobacco-leaf green
+  lumber: { label: "Lumber", color: "#c08a4f" }, //  fresh sawn-pine gold
+  furs: { label: "Furs", color: "#d8b48e" }, //     pale pelt tan
 };
 
 // Colors reused for an EMPTY slot, so filling/emptying always matches the panel.
@@ -119,6 +127,7 @@ export class VirginiaCargoSystem extends createSystem({
   private wirePanel(doc: UIKitDocument) {
     // --- Grab the elements we need by their id (set in the .uikitml) ----------
     const message = doc.getElementById("message") as UIKit.Text | null;
+    const purse = doc.getElementById("purse") as UIKit.Text | null;
     const setSailBtn = doc.getElementById("set-sail") as UIKit.Text | null;
     // The six hold slots, slot-1 … slot-6, kept in order so slot index 0 = slot-1.
     const slots = [1, 2, 3, 4, 5, 6].map(
@@ -145,7 +154,8 @@ export class VirginiaCargoSystem extends createSystem({
         for (let i = 0; i < cost; i++) filledBy.push(good);
       }
 
-      // Paint each of the six slots: a good's color + name if filled, else dim "—".
+      // Paint each of the six slots: a good's color + name if filled, else a
+      // dim "open" so kids can see it as room still waiting to be filled.
       slots.forEach((slot, index) => {
         if (!slot) return;
         const good = filledBy[index];
@@ -158,21 +168,47 @@ export class VirginiaCargoSystem extends createSystem({
           });
         } else {
           slot.setProperties({
-            text: "-",
+            text: "open",
             backgroundColor: EMPTY_SLOT_BG,
             color: EMPTY_SLOT_FG,
           });
         }
       });
 
-      // Set Sail is DISABLED until at least one good is aboard. We show that by
-      // dimming it (and the click handler also refuses early clicks).
+      // Keep the purse honest: the running total of coins spent so far, in the
+      // game's one money format ("{n} coins"). refresh() runs after every load,
+      // so this line is always live with zero extra plumbing.
+      purse?.setProperties({ text: `${coinsSpent(cargo)} coins` });
+
+      // Set Sail is DISABLED until at least one good is aboard — and the LABEL
+      // says why, so a locked button never reads as a broken one. The click
+      // handler also refuses early clicks, as a second line of defense.
       const ready = cargo.length >= 1;
       setSailBtn?.setProperties(
         ready
-          ? { backgroundColor: "#c8962a", color: "#1a120b" } // bright gold = go
-          : { backgroundColor: "#3a2f24", color: "#6e5d48" }, // dim = locked
+          ? { text: "Set Sail!", backgroundColor: "#c8962a", color: "#1a120b" } // gold = go
+          : {
+              text: "Load 1 good first",
+              backgroundColor: "#2e2519",
+              color: "#9a8568",
+            }, // dim = locked, label explains itself
       );
+    };
+
+    // --- A quick "the hold is FULL" blink --------------------------------------
+    // On an over-capacity click, all six slot borders flash warning orange and
+    // settle back to their normal wood color. One-shot timers only — nothing
+    // here runs per frame.
+    const SLOT_BORDER = "#4a3a28"; // the slots' resting border (matches the markup)
+    const flashSlotsFull = () => {
+      for (const slot of slots) {
+        slot?.setProperties({ borderColor: "#e08a5a" });
+      }
+      setTimeout(() => {
+        for (const slot of slots) {
+          slot?.setProperties({ borderColor: SLOT_BORDER });
+        }
+      }, 350);
     };
 
     // --- loadGood: the core "try to load this good" rule ----------------------
@@ -181,21 +217,27 @@ export class VirginiaCargoSystem extends createSystem({
       const used = usedSlots(); //          slots already taken
 
       if (used + cost <= voyageState.cargoSlotsTotal) {
-        // There's room: add the good, then confirm what it cost, how many coins
-        // have now been spent, and how much space is left.
+        // There's room: add the good, praise the pick, and pop real crates onto
+        // the deck. `used` is the count of slots filled BEFORE this load, so
+        // the crates land in exactly the slots this purchase just claimed.
         cargo.push(goodName);
+        addCargoProps(goodName, used, cost);
         const left = voyageState.cargoSlotsTotal - usedSlots();
         const price = BUY_COST[goodName] ?? 0;
         message?.setProperties({
-          text: `Loaded ${GOOD_INFO[goodName]?.label ?? goodName} for ${price} coins. Spent ${coinsSpent(cargo)} so far. ${left} slot${left === 1 ? "" : "s"} left.`,
+          text: `Nice pick, Captain! Loaded ${GOOD_INFO[goodName]?.label ?? goodName} for ${price} coins. ${left} slot${left === 1 ? "" : "s"} left.`,
           color: "#e0b870",
         });
+        // The cargo changed, so the captain's ledger repaints too.
+        refreshHud();
       } else {
-        // Not enough room: load NOTHING and tell the student (exact wording).
+        // Not enough room: load NOTHING, tell the student (exact wording), and
+        // blink the slot borders so the "hold is full" lesson lands visually.
         message?.setProperties({
           text: "Not enough cargo space! You'll have to leave something behind.",
           color: "#e08a5a",
         });
+        flashSlotsFull();
       }
 
       // Redraw the hold and the Set Sail state to match whatever just happened.
@@ -221,9 +263,11 @@ export class VirginiaCargoSystem extends createSystem({
       // Advance the voyage to its first leg (Virginia -> England).
       voyageState.currentLeg = "leg1";
       message?.setProperties({
-        text: `Anchors aweigh! Spent ${voyageState.purchaseCost} coins. Setting sail for England...`,
+        text: `Anchors aweigh! You spent ${voyageState.purchaseCost} coins. Off to England!`,
         color: "#9fd29f",
       });
+      // The spend is now locked in and the leg advanced — repaint the ledger.
+      refreshHud();
       console.log(
         "Captain's Voyage — set sail. currentLeg =",
         voyageState.currentLeg,
@@ -240,9 +284,12 @@ export class VirginiaCargoSystem extends createSystem({
     };
 
     // --- Wire the clicks ------------------------------------------------------
-    // Each good button loads its good. We also stamp the slot cost into the
-    // button's label here, read straight from GOOD_SLOTS, so the "· N slots"
-    // text can never disagree with the real cost.
+    // Each good button loads its good, wired through juiceButton so every tap
+    // answers with a click sound and a quick gold flash. We stamp the slot cost
+    // and price into the label here, read straight from GOOD_SLOTS/GOOD_COST,
+    // so the "- N slots - N coins" text can never disagree with the real
+    // numbers — and we paint each button the same color as the slots it fills,
+    // a cause-and-effect color link kids can see at a glance.
     for (const name of Object.keys(GOOD_INFO)) {
       const btn = doc.getElementById(`load-${name}`) as UIKit.Text | null;
       if (!btn) continue;
@@ -250,10 +297,20 @@ export class VirginiaCargoSystem extends createSystem({
       const price = BUY_COST[name] ?? 0;
       btn.setProperties({
         text: `${GOOD_INFO[name].label} - ${cost} slot${cost === 1 ? "" : "s"} - ${price} coins`,
+        backgroundColor: GOOD_INFO[name].color,
+        color: "#1a120b", // dark ink on the bright fill, same as a filled slot
       });
-      btn.addEventListener("click", () => loadGood(name));
+      // These buttons' colors never change, so the flash restores plain colors.
+      juiceButton(btn, () => loadGood(name), {
+        backgroundColor: GOOD_INFO[name].color,
+        color: "#1a120b",
+      });
     }
-    setSailBtn?.addEventListener("click", handleSetSail);
+    // Set Sail's look DEPENDS on state (locked vs ready), so its restore is
+    // refresh() itself — the one function that knows the button's true colors.
+    if (setSailBtn) {
+      juiceButton(setSailBtn, handleSetSail, refresh);
+    }
 
     // Draw the starting state (all six slots empty, Set Sail locked).
     refresh();

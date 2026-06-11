@@ -1,14 +1,14 @@
 <!--
   englandRules.uikitml
   --------------------------------------------------------------------------
-  The ENGLAND arrival "rule card" — the teaching beat of this leg. When the
+  The ENGLAND arrival "rule card" - the teaching beat of this leg. When the
   ship reaches England, this card floats in front of the player and explains
   the Navigation Acts: England (the Crown), not the colonist, decides what the
   cargo is worth. The student then HAGGLES that price (Push for more / Accept),
   and a Continue button leads onward to the smuggler step.
 
-  This file is just the MARKUP + STYLES (the look). All the behavior — storm
-  damage, the haggle rounds, and the Continue button — lives in
+  This file is just the MARKUP + STYLES (the look). All the behavior - storm
+  damage, the haggle rounds, and the Continue button - lives in
   src/englandRules.ts, which finds these elements by their id (#offer-value,
   #haggle-push, #haggle-accept, #sale-message, #continue-voyage) and wires them up.
 
@@ -18,12 +18,18 @@
     - Styling is plain CSS in the <style> block, matched by .class or #id.
     - Any text we REPLACE later from code must START with real placeholder text
       here, or UIKit trims the empty element away and code can't fill it in.
-      That's why #cargo-value starts as "Calculating cargo value...".
+      That's why #offer-value starts as "Calculating cargo value...".
   --------------------------------------------------------------------------
 -->
 <style>
-  /* The whole card: a cold, dark slate panel (England's cool palette) laid out
-     as a vertical column, with gold accents to echo the Crown. */
+  /* COLOR KEY - the same three accents every panel in this game uses, so the
+     student learns them once and trusts them everywhere:
+       gold   #c8962a = tap this (buttons, the current step chip)
+       green  #9fd29f = good news
+       orange #e08a5a = risky or bad news */
+
+  /* The whole card: a cold, dark slate panel (England's cool palette) framed
+     in gold like every other card in the voyage, laid out as a column. */
   .panel {
     display: flex;
     flex-direction: column;
@@ -31,35 +37,68 @@
     width: 104;
     padding: 4;
     background-color: #10161b;
-    border-color: #2a3942;
-    border-width: 0.18;
+    border-color: #c8962a;
+    border-width: 0.2;
     border-radius: 3;
+  }
+
+  /* The small gold ribbon above the title - it names the SCENE the student is
+     standing in, the same way a chapter heading names a chapter. */
+  .ribbon {
+    font-size: 2.4;
+    font-weight: bold;
+    color: #c8962a;
+    text-align: left;
   }
 
   /* The big port name at the top. */
   .title {
     font-size: 5;
     font-weight: bold;
-    color: #c8962a; /* PALETTE.GOLD — the Crown's brass */
+    color: #c8962a; /* PALETTE.GOLD - the Crown's brass */
     text-align: left;
   }
 
-  /* A softer line of scene-setting under the title. */
+  /* The voyage step tracker: six little chips, one per phase of the trip.
+     The CURRENT step (3 Sell) glows gold; the rest sit dim until their turn. */
+  .steps {
+    display: flex;
+    flex-direction: row;
+    margin-top: 1;
+    margin-bottom: 1.5;
+  }
+  .step {
+    width: 15;
+    padding: 0.6;
+    margin-right: 1;
+    font-size: 2;
+    text-align: center;
+    border-radius: 1;
+    background-color: #241a10;
+    color: #8a7860;
+  }
+  .step-now {
+    background-color: #c8962a;
+    color: #1a120b;
+    font-weight: bold;
+  }
+
+  /* A softer line of scene-setting under the step chips. */
   .subtitle {
-    font-size: 2.2;
+    font-size: 2.6;
     color: #9fb0bb;
     text-align: left;
     margin-top: 0.4;
     margin-bottom: 1.4;
   }
 
-  /* The rule text itself — the Navigation Acts. Long, so it wraps onto several
-     lines inside the panel's width. */
-  .rule {
-    font-size: 2.4;
+  /* The rule text itself - the Navigation Acts, told one short line at a time
+     so each idea lands on its own. */
+  .rule-line {
+    font-size: 2.8;
     color: #e7edf1;
     text-align: left;
-    margin-top: 1;
+    margin-top: 0.8;
   }
 
   /* A small gold heading over the offer line. */
@@ -74,7 +113,7 @@
   /* The big current-offer number. Code rewrites this as the captain haggles (see
      src/englandRules.ts); it ships with placeholder text so it isn't trimmed. */
   .value {
-    font-size: 3.2;
+    font-size: 3.8;
     font-weight: bold;
     color: #f3e9d2; /* PALETTE.CREAM */
     text-align: left;
@@ -89,8 +128,9 @@
     align-items: stretch;
   }
 
-  /* The two haggle buttons ("Push for more" / "Accept"): cool slate with a gold
-     edge, side by side. Code dims them once a price is settled. */
+  /* The two haggle buttons. Each label says what KIND of move it is - pushing
+     is the gamble (Risky!), accepting is the sure thing (Safe). Cool slate with
+     a gold edge; code dims them once a price is settled. */
   .sale-btn {
     width: 48;
     margin-right: 1.5;
@@ -100,28 +140,35 @@
     border-color: #c8962a;
     border-width: 0.12;
     border-radius: 1.4;
-    font-size: 2.3;
+    font-size: 2.6;
     font-weight: medium;
     text-align: center;
     cursor: pointer;
   }
 
-  /* The haggle status line — the running offer commentary and the agreed-price
-     confirmation. Ships with placeholder text so it isn't trimmed. */
+  /* The haggle status line - the OUTCOME BANNER. It starts as a quiet hint and
+     becomes the loudest line on the card when a deal lands (code recolors it:
+     green = good news, orange = bad news). Ships with placeholder text so it
+     isn't trimmed. */
   .sale-message {
-    font-size: 2.2;
+    font-size: 2.8;
+    font-weight: bold;
     color: #9fb0bb;
-    text-align: left;
+    text-align: center;
     margin-top: 1.8;
+    padding: 1.4;
+    border-radius: 1.2;
+    background-color: #16212a;
   }
 
-  /* The Continue button. It SHIPS disabled-looking (dim) and the code brightens
-     it to gold once the cargo has been sold. */
+  /* The Continue button. It SHIPS locked: its label says exactly what to do
+     first ("Agree a price first"), and the code swaps it to a bright gold
+     "Continue" once the cargo has been sold. */
   #continue-voyage {
     margin-top: 1.8;
     padding: 2;
     background-color: #2a3942;
-    color: #6b7682;
+    color: #93a0ab;
     border-color: #4a3a28;
     border-width: 0.12;
     border-radius: 1.5;
@@ -133,35 +180,49 @@
 </style>
 
 <div class="panel">
+  <!-- The scene ribbon: tells the student WHERE they are, at a glance. -->
+  <span class="ribbon">PORT OF ENGLAND</span>
   <span class="title">England</span>
+
+  <!-- The voyage step tracker: this card is step 3 of 6, so "3 Sell" is the
+       gold chip. The chips are decoration only - no code touches them. -->
+  <div class="steps">
+    <span class="step">1 Load</span>
+    <span class="step">2 Storm</span>
+    <span class="step step-now">3 Sell</span>
+    <span class="step">4 Deal</span>
+    <span class="step">5 Map</span>
+    <span class="step">6 Score</span>
+  </div>
+
   <span class="subtitle">You have made port. The Crown's customs house is waiting.</span>
 
-  <!-- The lesson. This is the exact wording of the rule card. NOTE: the panel
-       font has no em-dash (—) glyph (it renders as a broken box), so the one
-       dash in "prices — not you" is written as a plain hyphen "-" — the same
-       ASCII-only rule the other panels in this project follow. The wording is
-       otherwise verbatim. -->
-  <span class="rule">The Navigation Acts. By order of the Crown, all colonial raw goods must be shipped to England and sold to English merchants only. England sets the prices - not you. You may not sell to other nations. This is mercantilism: the colony exists to make the mother country wealthy.</span>
+  <!-- The lesson, one short line at a time. Same ASCII-only rule as the rest
+       of the project: the panel font has no em-dash glyph, so plain "-". -->
+  <span class="rule-line">The Navigation Acts are England's trade laws:</span>
+  <span class="rule-line">1. Colonists must sell their goods to England.</span>
+  <span class="rule-line">2. England sets the price - not you.</span>
+  <span class="rule-line">Why? So England gets rich first. That is mercantilism.</span>
 
   <!-- The haggle. England names an opening price (its list valuation, lowered by
-       storm damage if any); the captain may "Push for more" (up to a few rounds,
-       each push risking the merchant balking) or "Accept" the current offer. The
+       storm damage if any); the captain may push for more (up to a few rounds,
+       each push risking the merchant balking) or accept the current offer. The
        smuggler's illegal alternative is a SEPARATE step (built in Edit 4). All
        numbers/text below are written by code (see englandRules.ts); placeholders
        keep the elements from being trimmed. -->
   <span class="value-label">England's offer for your cargo</span>
   <span id="offer-value" class="value">Calculating cargo value...</span>
 
-  <!-- Push for a better price, or accept the current offer. -->
+  <!-- Push for a better price (the gamble), or accept the offer (the sure thing). -->
   <div class="sale-row">
-    <button id="haggle-push" class="sale-btn">Push for more</button>
-    <button id="haggle-accept" class="sale-btn">Accept</button>
+    <button id="haggle-push" class="sale-btn">Push for more (Risky!)</button>
+    <button id="haggle-accept" class="sale-btn">Accept the offer (Safe)</button>
   </div>
 
-  <!-- The running haggle status (offer commentary, then the agreed-price line). -->
+  <!-- The outcome banner (offer commentary, then the agreed-price line). -->
   <span id="sale-message" class="sale-message">Haggle for a better price, or accept the offer.</span>
 
-  <!-- Onward. Ships dim; code brightens it once a price is agreed, then leads to
-       the smuggler step (Edit 4; for now it continues to the route map). -->
-  <button id="continue-voyage">Continue</button>
+  <!-- Onward. Ships locked with its reason as the label; code brightens it to a
+       gold "Continue" once a price is agreed, then leads to the smuggler step. -->
+  <button id="continue-voyage">Agree a price first</button>
 </div>

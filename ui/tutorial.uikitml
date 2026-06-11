@@ -25,6 +25,13 @@
   --------------------------------------------------------------------------
 -->
 <style>
+  /* COLOR CODE used across every panel in the game (so kids learn it once):
+       gold   #c8962a = tap this (buttons, the thing to do next)
+       green  #9fd29f = good news
+       orange #e08a5a = risky or bad news
+     This coach card is the "guide voice": dark wood + gold frame, the same on
+     every leg of the voyage. */
+
   /* The whole card: a dark, warm wooden coach card with a gold edge, so it reads
      as the same "guide" voice no matter which scene (warm Virginia, cold storm,
      slate England) it floats over. Laid out as a vertical column. */
@@ -40,9 +47,11 @@
     border-radius: 3;
   }
 
-  /* The small gold "TUTORIAL - <section>" eyebrow over the title. */
+  /* The small gold eyebrow over the title. Code writes a progress line like
+     "STEP 2 OF 6 - STORM AT SEA" into it, so it stays bold and small-but-readable
+     (about 30 characters fit on one line at this size). */
   .eyebrow {
-    font-size: 2.2;
+    font-size: 2.4;
     font-weight: bold;
     color: #c8962a;
     text-align: left;
@@ -58,23 +67,29 @@
   }
 
   /* The teaching paragraph - the history/economics behind this leg. Wraps onto
-     several lines inside the card's width. */
+     several lines inside the card's width. Sized for easy reading by a
+     5th grader standing a couple of meters away. */
   .body {
-    font-size: 2.6;
+    font-size: 3.2;
     color: #e7dcc4;
     text-align: left;
-    line-height: 1.35;
+    line-height: 1.4;
     margin-top: 1.8;
   }
 
-  /* The "What to do" call-to-action, picked out in warm gold so the student can
-     find the instruction at a glance. */
+  /* The "What to do" call-to-action. It sits in its own gold-bordered callout
+     box so the one thing the student must DO pops out from the reading above. */
   .task {
-    font-size: 2.5;
-    font-weight: medium;
+    font-size: 3;
+    font-weight: bold;
     color: #e0b870;
     text-align: left;
-    margin-top: 2;
+    margin-top: 2.4;
+    padding: 1.6;
+    background-color: #241a10;
+    border-color: #c8962a; /* gold = tap this / do this */
+    border-width: 0.18;
+    border-radius: 1.4;
   }
 
   /* The single dismiss button: a solid gold bar with dark ink. Its label is set

@@ -59,6 +59,11 @@ import { beginVoyageSummary } from "./voyageSummary.js";
 // The reusable tutorial coach: a short teaching card gates the route map.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
 
+// The ship's bell at the main mast. One ding marks arriving in England, two
+// dings mark making it home - an audible spine for the 8-second sail, so a
+// student who looked away knows to look back at the chart.
+import { ringShipBell } from "./ambientMotion.js";
+
 // ----------------------------------------------------------------------------
 // Custom components
 // ----------------------------------------------------------------------------
@@ -66,10 +71,14 @@ import { showTutorial, TUTORIALS } from "./tutorial.js";
 // RouteMarker marks the one little "ship" sphere that sails the chart, and
 // carries its animation clock. `elapsed` is how many seconds the voyage has
 // been playing; `done` flips true once it has sailed home, so we only hand off
-// to the summary once.
+// to the summary once. `rangEngland` and `rangHome` remember whether the
+// ship's bell has already rung for each arrival, so each one rings exactly once
+// no matter how many frames pass after the moment.
 export const RouteMarker = createComponent("RouteMarker", {
   elapsed: { type: Types.Float32, default: 0 },
   done: { type: Types.Boolean, default: false },
+  rangEngland: { type: Types.Boolean, default: false },
+  rangHome: { type: Types.Boolean, default: false },
 });
 
 // MapLabel marks a floating text label on the chart and holds the words it
@@ -105,6 +114,18 @@ const T_START = 0.8; // hold at Virginia before departing
 const T_LEG = 3.2; // seconds to sail one leg
 const T_HOLD = 0.8; // pause at England before the return
 const T_END = T_START + T_LEG + T_HOLD + T_LEG; // total run time
+const T_ARRIVE_ENGLAND = T_START + T_LEG; // the moment the marker docks in England
+
+// The golden WAKE TRAIL the ship bead leaves behind it. The trail is a small
+// POOL of dash meshes built once up front (never created mid-animation): every
+// TRAIL_SPACING_S seconds of sailing, the next pooled dash is moved to wherever
+// the bead is right now and scaled up from 0 (hidden) to 1 (visible). When the
+// pool runs out we wrap around and reuse the OLDEST dash - on the return leg
+// that makes the trail overdraw the outbound one, which reads exactly right:
+// "sailing home the same way we came".
+const TRAIL_COUNT = 26; // dashes in the pool (enough for both legs)
+const TRAIL_SPACING_S = 0.18; // seconds of travel between dropped dashes
+const Z_TRAIL = Z_SOLID + 0.001; // just in front of the solid sailed leg
 
 // Where the chart floats: a few meters along +X at eye height - exactly where
 // the England rule card stood, so it reads as the next screen in the voyage.
@@ -130,6 +151,18 @@ const goldDimMat = new MeshBasicMaterial({
 });
 const portMat = new MeshBasicMaterial({ color: PALETTE.GOLD }); // the three port dots
 const shipMat = new MeshBasicMaterial({ color: PALETTE.SHIP_WOOD }); // dark ship bead
+const trailMat = new MeshBasicMaterial({
+  color: PALETTE.GOLD,
+  transparent: true,
+  opacity: 0.55, // brighter than the un-sailed dashes, dimmer than the solid leg
+});
+
+// ONE shared geometry for every wake dash (the pool re-uses it 26 times), plus
+// the pool itself: plain mesh references the system repositions from update().
+// Rebuilt fresh each time the chart is built; the meshes live as entities under
+// the map group, so the group's disposeEntityTree sweep cleans them up too.
+const trailGeometry = new BoxGeometry(0.022, 0.008, 0.004);
+let trailDashes: Mesh[] = [];
 
 /**
  * addBar - build one thin flat bar (a thin box) lying in the chart plane.
@@ -261,6 +294,23 @@ export function createRouteMap(world: World): Entity {
   marker.position.set(VIRGINIA.x, VIRGINIA.y, Z_MARKER);
   world.createTransformEntity(marker, { parent: group }).addComponent(RouteMarker);
 
+  // --- The wake trail pool (all hidden at first) ------------------------------
+  // Build every wake dash NOW, so the animation never has to create anything.
+  // Each dash starts at scale 0 (invisible); the system pops them to scale 1
+  // one by one as the ship sails. They all share one geometry and one material,
+  // and they all lie along the Virginia <-> England line - both sailed legs run
+  // on that same line, so a single fixed angle keeps the wake looking drawn-in.
+  const wakeAngle = Math.atan2(ENGLAND.y - VIRGINIA.y, ENGLAND.x - VIRGINIA.x);
+  trailDashes = [];
+  for (let i = 0; i < TRAIL_COUNT; i++) {
+    const dash = new Mesh(trailGeometry, trailMat);
+    dash.position.set(VIRGINIA.x, VIRGINIA.y, Z_TRAIL);
+    dash.rotation.z = wakeAngle;
+    dash.scale.setScalar(0); // hidden until the ship sails past this spot
+    world.createTransformEntity(dash, { parent: group });
+    trailDashes.push(dash);
+  }
+
   // --- The text labels -------------------------------------------------------
   // Title across the top; port names beside their dots; the "third leg" caption
   // tucked just under the dashed base of the triangle. Wider phrases get wider
@@ -288,7 +338,16 @@ export class RouteMapSystem extends createSystem({
     where: [eq(PanelUI, "config", "./ui/mapLabel.json")],
   },
 }) {
+  // Wake-trail bookkeeping, set up once in init() so update() never allocates:
+  // `trailIndex` is which pooled dash gets placed next (it wraps around), and
+  // `trailAccum` counts seconds of sailing since the last dash was dropped.
+  private trailIndex!: number;
+  private trailAccum!: number;
+
   init() {
+    this.trailIndex = 0;
+    this.trailAccum = 0;
+
     // When a label's little panel finishes loading, write its remembered words
     // into the text element. (Setting text only "takes" once the document
     // exists, which is exactly when "qualify" fires.)
@@ -322,8 +381,43 @@ export class RouteMapSystem extends createSystem({
       const pos = this.positionAt(elapsed);
       entity.object3D!.position.set(pos.x, pos.y, Z_MARKER);
 
+      // --- Drop wake dashes while the ship is actually SAILING ---------------
+      // The ship moves during two windows: Virginia -> England, and England ->
+      // home. During the holds at each port it sits still, so we don't count
+      // that time - a wake only forms behind a moving ship. Every 0.18s of
+      // travel we move the next POOLED dash (never a new one) to the bead's
+      // current spot and pop it visible. The while-loop catches up cleanly if
+      // one clamped frame spans more than one spacing.
+      const departEngland = T_ARRIVE_ENGLAND + T_HOLD;
+      const sailing =
+        (elapsed > T_START && elapsed < T_ARRIVE_ENGLAND) ||
+        (elapsed > departEngland && elapsed < T_END);
+      if (sailing && trailDashes.length > 0) {
+        this.trailAccum += step;
+        while (this.trailAccum >= TRAIL_SPACING_S) {
+          this.trailAccum -= TRAIL_SPACING_S;
+          const dash = trailDashes[this.trailIndex];
+          dash.position.set(pos.x, pos.y, Z_TRAIL);
+          dash.scale.setScalar(1); // reveal it (pooled meshes start at scale 0)
+          this.trailIndex = (this.trailIndex + 1) % trailDashes.length;
+        }
+      }
+
+      // --- Ring the ship's bell at each arrival, exactly once -----------------
+      // One ding when the ship first reaches England; two when it makes it
+      // home. The guard booleans live on the RouteMarker component, so each
+      // bell can only ring on the single frame its moment first passes.
+      if (elapsed >= T_ARRIVE_ENGLAND && !entity.getValue(RouteMarker, "rangEngland")) {
+        entity.setValue(RouteMarker, "rangEngland", true);
+        ringShipBell(1);
+      }
+
       // Reached the end of the voyage home: finish up exactly once.
       if (elapsed >= T_END) {
+        if (!entity.getValue(RouteMarker, "rangHome")) {
+          entity.setValue(RouteMarker, "rangHome", true);
+          ringShipBell(2);
+        }
         entity.setValue(RouteMarker, "done", true);
         this.finishVoyage();
       }

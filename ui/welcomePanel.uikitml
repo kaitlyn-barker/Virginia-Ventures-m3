@@ -1,16 +1,19 @@
 <!--
   welcomePanel.uikitml
   --------------------------------------------------------------------------
-  The WELCOME card - the very first thing the student sees. It sets the scene
-  (who you are, what era), states the goal, explains the scores they are judged
-  on, and gives the controls. A single "Begin Voyage" button starts the
-  experience: it dismisses this card, shows the Virginia tutorial, and only then
-  brings up the cargo-loading panel.
+  The WELCOME card - the game's TITLE SCREEN, and the very first thing the
+  student sees. It works like the cover of a game box: a big title, a punchy
+  tagline, a short setup paragraph, the three scores you are graded on, and a
+  quick controls hint. One big gold "Begin Voyage!" button starts everything:
+  it dismisses this card, shows the Virginia tutorial, and only then brings up
+  the cargo-loading panel.
 
-  All of this card's text is BAKED IN here (nothing is set at runtime), so this
-  file needs no matching code beyond a button handler. The behavior - what the
-  "Begin Voyage" button does - lives in src/welcomePanel.ts, which finds the
-  button by its id (#welcome-begin).
+  This is the dark-wood "guide voice" card in the panel family (wood = the
+  game talking to you, scene-tinted = the place you are, parchment = official
+  documents). All of its text is BAKED IN here (nothing is set at runtime), so
+  this file needs no matching code beyond a button handler. The behavior -
+  what the "Begin Voyage!" button does - lives in src/welcomePanel.ts, which
+  finds the button by its id (#welcome-begin).
 
   UIKITML reminders for beginners:
     - <span> is a line of text, <button> is a clickable box, <div> is a container.
@@ -19,8 +22,16 @@
   --------------------------------------------------------------------------
 -->
 <style>
-  /* The whole card: a dark, warm wooden panel with a gold edge - the same warm
-     colonial voice as the rest of the voyage. Laid out as a vertical column. */
+  /* ------------------------------------------------------------------
+     ACCENT COLOR KEY (the same on every panel in the game):
+       gold   #c8962a = tap this (buttons and things you can press)
+       green  #9fd29f = good news
+       orange #e08a5a = risky or bad news
+     ------------------------------------------------------------------ */
+
+  /* The whole card: a dark, warm wooden panel with the family's gold frame -
+     the same warm colonial voice as the rest of the voyage. Laid out as a
+     vertical column. */
   .welcome {
     display: flex;
     flex-direction: column;
@@ -28,12 +39,12 @@
     width: 112;
     padding: 5;
     background-color: #17120c;
-    border-color: #c8962a; /* PALETTE.GOLD */
-    border-width: 0.25;
+    border-color: #c8962a; /* PALETTE.GOLD - the shared card frame */
+    border-width: 0.2;
     border-radius: 3;
   }
 
-  /* The game's title, centered at the top. */
+  /* The game's title, big and centered at the top - like a game box cover. */
   .title {
     font-size: 6;
     font-weight: bold;
@@ -41,27 +52,36 @@
     text-align: center;
   }
 
-  /* The era/scene-setting line under the title. */
+  /* The tagline: one punchy gold line that sells the adventure. */
+  .tagline {
+    font-size: 3.2;
+    font-weight: bold;
+    color: #e0b870;
+    text-align: center;
+    margin-top: 1;
+  }
+
+  /* The era/scene-setting caption under the tagline. */
   .era {
-    font-size: 2.4;
+    font-size: 2.6;
     color: #c9b896;
     text-align: center;
     margin-top: 0.6;
     margin-bottom: 2.4;
   }
 
-  /* The opening premise paragraph. Wraps onto several lines. */
+  /* The opening setup paragraph. Short sentences, wraps onto several lines. */
   .body {
-    font-size: 2.6;
+    font-size: 3;
     color: #e7dcc4;
     text-align: left;
     line-height: 1.4;
     margin-bottom: 1.4;
   }
 
-  /* A small gold heading over each block ("Your goal", "You are judged on"...). */
+  /* A small gold heading over each block ("Your three scores", "Controls"). */
   .section-label {
-    font-size: 2.5;
+    font-size: 2.8;
     font-weight: medium;
     color: #c8962a;
     text-align: left;
@@ -69,15 +89,8 @@
     margin-bottom: 0.8;
   }
 
-  /* The goal sentence, picked out in warm gold. */
-  .goal {
-    font-size: 2.6;
-    color: #e0b870;
-    text-align: left;
-    line-height: 1.35;
-  }
-
-  /* One score line: a bold name on the left, a plain description on the right. */
+  /* One score line: a bold gold name on the left, a friendly one-line
+     description on the right. */
   .score-row {
     display: flex;
     flex-direction: row;
@@ -86,39 +99,40 @@
   }
 
   .score-name {
-    width: 34;
-    font-size: 2.4;
+    width: 36;
+    font-size: 2.8;
     font-weight: bold;
     color: #e0b870;
     text-align: left;
   }
 
   .score-desc {
-    width: 62;
-    font-size: 2.3;
+    width: 64;
+    font-size: 2.7;
     color: #cdbf9f;
     text-align: left;
     line-height: 1.3;
   }
 
-  /* The controls hint. */
+  /* The controls hint - kept short so the title screen stays snappy. */
   .controls {
-    font-size: 2.3;
+    font-size: 2.7;
     color: #cdbf9f;
     text-align: left;
     line-height: 1.35;
   }
 
-  /* The single Begin button: a solid gold bar with dark ink. */
+  /* The single Begin button: a big, inviting solid gold bar with dark ink.
+     Gold = tap this, and this is THE thing to tap on this card. */
   #welcome-begin {
-    margin-top: 2.8;
-    padding: 2.2;
+    margin-top: 3;
+    padding: 2.6;
     background-color: #c8962a; /* PALETTE.GOLD */
     color: #1a120b; /* near-black ink reads cleanly on gold */
     border-color: #4a3a28;
     border-width: 0.12;
-    border-radius: 1.8;
-    font-size: 3.4;
+    border-radius: 2;
+    font-size: 4;
     font-weight: bold;
     text-align: center;
     cursor: pointer;
@@ -127,29 +141,27 @@
 
 <div class="welcome">
   <span class="title">Captain's Voyage</span>
-  <span class="era">A trader's tale of the colonial Atlantic, 1700s</span>
+  <span class="tagline">Load your ship. Brave the storm. Strike it rich!</span>
+  <span class="era">An Atlantic trading adventure set in the 1700s</span>
 
-  <span class="body">You are the captain of a colonial merchant ship. You will sail the Triangular Trade between Virginia and England - buying goods in the colonies and selling them across the Atlantic under the Crown's strict trade laws.</span>
+  <span class="body">You are the captain of a trading ship in the 1700s. Buy goods in Virginia. Sail the Atlantic. Sell them in England. Keep your profit - and decide how loyal you stay to the King.</span>
 
-  <span class="section-label">Your goal</span>
-  <span class="goal">Buy low in Virginia, sell high in England, and bring home a profit - while deciding how loyal to stay to the Crown.</span>
-
-  <span class="section-label">You are judged on</span>
+  <span class="section-label">Your three scores</span>
   <div class="score-row">
     <span class="score-name">Cargo Value</span>
-    <span class="score-desc">what England says your hold is worth.</span>
+    <span class="score-desc">what England says your goods are worth.</span>
   </div>
   <div class="score-row">
     <span class="score-name">Profit</span>
-    <span class="score-desc">the coins you actually keep after costs.</span>
+    <span class="score-desc">the coins you get to keep.</span>
   </div>
   <div class="score-row">
     <span class="score-name">Crown Compliance</span>
-    <span class="score-desc">how well you obey England's trade laws.</span>
+    <span class="score-desc">how well you follow the King's rules.</span>
   </div>
 
   <span class="section-label">Controls</span>
-  <span class="controls">Move with the thumbstick (or WASD / arrow keys in a browser). Point at a button and pull the trigger - or click - to choose.</span>
+  <span class="controls">Move with the thumbstick (or WASD keys). Point at a button and pull the trigger - or click - to choose.</span>
 
-  <button id="welcome-begin">Begin Voyage</button>
+  <button id="welcome-begin">Begin Voyage!</button>
 </div>

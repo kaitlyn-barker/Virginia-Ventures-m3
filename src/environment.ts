@@ -25,11 +25,20 @@ import {
   BoxGeometry,
   PlaneGeometry,
   CylinderGeometry,
+  SphereGeometry,
+  CircleGeometry,
+  RingGeometry,
   MeshStandardMaterial,
   MeshBasicMaterial,
   DirectionalLight,
   DoubleSide,
   PCFSoftShadowMap,
+  ACESFilmicToneMapping,
+  Fog,
+  CanvasTexture,
+  RepeatWrapping,
+  SRGBColorSpace,
+  type Object3D,
   // IWSDK environment + locomotion components.
   DomeGradient,
   IBLGradient,
@@ -89,6 +98,30 @@ export interface VoyageEnvironment {
   shipGroup: Entity; // parent of every ship part — move this to move the ship
   ocean: Entity; // the big sea plane
   sun: Entity; // the warm directional "sun" light
+
+  // Live handles for the things the AmbientMotionSystem animates each frame.
+  // They are plain Three.js objects/materials (not entities) — the system just
+  // writes a few numbers into them per frame, which is as cheap as it gets.
+  anim: {
+    sunLight: DirectionalLight; // dimmed + cooled during the storm
+    oceanTexture: CanvasTexture; // scrolled slowly so the water drifts
+    oceanMaterial: MeshStandardMaterial; // storm darkening
+    pennant: Object3D; // the little masthead flag — flutters
+    cloudsGroup: Object3D; // the whole cloud bank — drifts in a slow circle
+    gulls: GullRig[]; // the three circling seagulls
+    foamMaterial: MeshBasicMaterial; // foam rings — opacity gently pulses
+  };
+}
+
+// One seagull's moving parts. The PIVOT spins to circle the bird around the
+// ship; the GULL itself bobs up and down; the two WINGS flap.
+export interface GullRig {
+  pivot: Object3D;
+  gull: Object3D;
+  leftWing: Object3D;
+  rightWing: Object3D;
+  speed: number; // circling speed (radians/sec); negative = opposite direction
+  phase: number; // per-bird offset so the three never move in lockstep
 }
 
 export function createVoyageEnvironment(world: World): VoyageEnvironment {
@@ -99,31 +132,45 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
   world.renderer.shadowMap.enabled = true;
   world.renderer.shadowMap.type = PCFSoftShadowMap;
 
+  // Filmic tone mapping: ACES rolls bright highlights off gently (the glowing
+  // sails, sun disc, and lanterns bloom instead of clipping to flat white) and
+  // richens the midtones — the single cheapest "looks like a real game" switch.
+  // The slight exposure bump compensates for ACES darkening the mids.
+  world.renderer.toneMapping = ACESFilmicToneMapping;
+  world.renderer.toneMappingExposure = 1.15;
+
+  // Distance fog: everything far away melts gently into a pale haze. This hides
+  // the hard edge of the ocean plane, makes the distant islands feel truly far
+  // (aerial perspective), and costs nothing per frame. The sun disc, clouds, and
+  // gulls opt OUT of fog (fog: false on their materials) so they stay crisp.
+  world.scene.fog = new Fog("#cfdde8", 80, 480);
+
   // --- 1. Sky + ambient lighting ----------------------------------------------
   // Environment components (the sky dome and image-based lighting) must live on
   // the LEVEL ROOT entity, not a random entity, or IWSDK silently ignores them.
   // DomeGradient = the sky you SEE (background). IBLGradient = soft fill light
   // that gently illuminates every surface so shadowed sides aren't pure black.
-  const levelRoot = world.activeLevel?.value;
+  const levelRoot = world.activeLevel?.peek(); // one-time read, no subscription
   if (levelRoot) {
     // The visible sky: pale up top (SKY), a warm cream glow at the horizon
     // (golden hour), and the OCEAN color below the horizon line so sea and sky
     // meet believably.
     levelRoot.addComponent(DomeGradient, {
       sky: hexToRgba(PALETTE.SKY),
-      equator: hexToRgba(PALETTE.CREAM),
+      equator: hexToRgba(PALETTE.HORIZON_PEACH), // peachy golden-hour glow
       ground: hexToRgba(PALETTE.OCEAN),
       intensity: 1.0,
     });
 
-    // Ambient fill lighting — kept low (0.5) so the directional sun stays the
+    // Ambient fill lighting — kept low (0.6) so the directional sun stays the
     // dominant light and shadows still read clearly. Warm cream up high, cool
-    // ocean from below (light bouncing off the water).
+    // ocean from below (light bouncing off the water). Slightly brighter than
+    // before to compensate for ACES tone mapping darkening the midtones.
     levelRoot.addComponent(IBLGradient, {
-      sky: hexToRgba(PALETTE.CREAM),
+      sky: hexToRgba("#f8e8c8"),
       equator: hexToRgba(PALETTE.CREAM),
       ground: hexToRgba(PALETTE.OCEAN),
-      intensity: 0.5,
+      intensity: 0.6,
     });
   } else {
     // Defensive: if no active level exists yet, say so instead of failing quietly.
@@ -137,24 +184,31 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
   // direction, like real sunlight. We give it a warm golden tint and place it
   // LOW and to the front-left so the light rakes across the deck at a golden-
   // hour angle (~32° above the horizon) and casts long, soft shadows.
-  const sunLight = new DirectionalLight("#ffd9a0", 3.0); // warm gold, fairly strong
-  // Position = the direction the sun shines FROM. A light source at (-8, 8, -10)
-  // aiming at the origin gives roughly a 32° elevation: low and golden.
-  sunLight.position.set(-8, 8, -10);
+  const sunLight = new DirectionalLight("#ffd9a0", 3.5); // warm gold, fairly strong
+  // Position = the direction the sun shines FROM. The light AIMS at the center
+  // of the action (its target below, between ship and dock), and shining from
+  // (-1, 8, -10) keeps the same low ~32° golden-hour elevation as before.
+  sunLight.position.set(-1, 8, -10);
   sunLight.castShadow = true;
 
-  // Shadow quality vs. performance: a 1024² shadow map is plenty for one ship
-  // and cheap enough for the Quest 3S. We tighten the shadow "camera" to a box
-  // just big enough to wrap the ship (±6 m) so the limited resolution is spent
-  // where it matters. `radius` softens the edges; `bias`/`normalBias` stop the
-  // self-shadowing speckle artifact ("shadow acne").
-  sunLight.shadow.mapSize.set(1024, 1024);
+  // Aim the light between the ship and the port so the shadow box (below) wraps
+  // ALL the action: ship, dock, cargo, sign, and the port buildings. A light's
+  // target only updates while it is part of the scene, so it gets its own
+  // entity right after the light itself.
+  sunLight.target.position.set(7, 0, -1);
+
+  // Shadow quality vs. performance: one 2048² shadow map for one directional
+  // light is comfortably within the Quest 3S budget. The shadow "camera" box is
+  // sized to wrap the ship AND the dock/port (±13 × ±12 m around the target) so
+  // the buildings and shore props get real shadows too. `radius` softens the
+  // edges; `bias`/`normalBias` stop the self-shadowing speckle ("shadow acne").
+  sunLight.shadow.mapSize.set(2048, 2048);
   sunLight.shadow.camera.near = 0.5;
-  sunLight.shadow.camera.far = 40;
-  sunLight.shadow.camera.left = -6;
-  sunLight.shadow.camera.right = 6;
-  sunLight.shadow.camera.top = 6;
-  sunLight.shadow.camera.bottom = -6;
+  sunLight.shadow.camera.far = 60;
+  sunLight.shadow.camera.left = -13;
+  sunLight.shadow.camera.right = 13;
+  sunLight.shadow.camera.top = 12;
+  sunLight.shadow.camera.bottom = -12;
   sunLight.shadow.radius = 4;
   sunLight.shadow.bias = -0.0005;
   sunLight.shadow.normalBias = 0.02;
@@ -164,19 +218,60 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
     parent: world.sceneEntity,
     persistent: true,
   });
+  // The target must ALSO live in the scene graph or the light silently keeps
+  // aiming at the origin.
+  world.createTransformEntity(sunLight.target, {
+    parent: world.sceneEntity,
+    persistent: true,
+  });
+
+  // --- 2b. The VISIBLE sun ------------------------------------------------------
+  // The DirectionalLight is invisible — these two flat circles are the sun you
+  // can actually point at: a bright core and a soft warm halo behind it. They
+  // sit 420 m out along the light's direction so the lighting and the visible
+  // sun always agree. MeshBasicMaterial = unlit, fog: false = stays crisp.
+  const sunDir = sunLight.position
+    .clone()
+    .sub(sunLight.target.position)
+    .normalize();
+  const sunDiscMat = new MeshBasicMaterial({
+    color: "#ffeec9",
+    fog: false,
+    depthWrite: false,
+  });
+  const sunDisc = new Mesh(new CircleGeometry(10, 24), sunDiscMat);
+  sunDisc.position.copy(sunDir).multiplyScalar(420);
+  sunDisc.lookAt(0, 0, 0); // CircleGeometry faces +Z, so turn it back at us
+  const sunHaloMat = new MeshBasicMaterial({
+    color: "#ffd9a0",
+    transparent: true,
+    opacity: 0.22,
+    fog: false,
+    depthWrite: false,
+  });
+  const sunHalo = new Mesh(new CircleGeometry(26, 24), sunHaloMat);
+  sunHalo.position.copy(sunDir).multiplyScalar(419); // a hair closer, behind-glow
+  sunHalo.lookAt(0, 0, 0);
+  const skyGroup = new Group();
+  skyGroup.add(sunHalo, sunDisc);
+  world.createTransformEntity(skyGroup, {
+    parent: world.sceneEntity,
+    persistent: true,
+  });
 
   // --- 3. The ocean -----------------------------------------------------------
-  // A single huge flat plane painted with the OCEAN color. 500×500 m is far more
-  // than the eye can tell from a ship, so it reaches the horizon in every
-  // direction while staying a single cheap quad. It only RECEIVES shadows.
-  //
-  // (Optional later: a "shimmer" by slowly scrolling the material's UV offset in
-  // a tiny system. We keep it static here — one flat quad is the cheapest, most
-  // Quest-friendly option, and the calm sea reads fine without motion.)
+  // A single huge flat plane, but now painted with a hand-made WAVE TEXTURE: a
+  // small canvas covered in soft wave-top dabs and tiny sparkle flecks, tiled
+  // ~26 times across the plane. The AmbientMotionSystem scrolls the texture's
+  // offset a tiny amount each frame, so the whole sea drifts — alive, for the
+  // cost of one texture fetch. 500×500 m reaches the horizon in every direction
+  // while staying a single cheap quad. It only RECEIVES shadows.
+  const oceanTexture = makeWaterTexture();
   const oceanMat = new MeshStandardMaterial({
-    color: PALETTE.OCEAN,
-    roughness: 0.35, // a touch glossy so the sun leaves a soft sheen
-    metalness: 0.1,
+    map: oceanTexture,
+    color: "#ffffff", // the texture carries the color; don't tint it darker
+    roughness: 0.28, // a touch glossy so the sun leaves a soft sheen
+    metalness: 0.15, // and glints across the moving flecks
   });
   const oceanMesh = new Mesh(new PlaneGeometry(500, 500), oceanMat);
   oceanMesh.rotation.x = -Math.PI / 2; // lay the plane flat (normal points up)
@@ -329,8 +424,8 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
   // BEHIND the player (who stands at the bow) so the forward view to the horizon
   // stays open. They tower overhead and fill the view when you turn around: a
   // taller main mast just behind you and a shorter mizzen mast further aft.
-  const mainMastHeight = 5.0;
-  const mizzenMastHeight = 4.0;
+  const mainMastHeight = 6.5;
+  const mizzenMastHeight = 5.2;
   const mastRadius = 0.08;
   const mainMastZ = 2.5; // behind the player (~1.5 m aft), towering overhead
   const mizzenMastZ = 4.0; // further toward the stern (~3 m aft)
@@ -351,24 +446,77 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
     mizzenMastZ,
   );
 
-  // 4e. Sails — cream planes rigged across each mast. A flat PlaneGeometry already
-  // faces along Z (its normal points down the ship), exactly how a square sail
-  // catches the wind, so no rotation is needed. DoubleSide makes it visible from
-  // both deck and sea.
+  // 4e. Sails — cream canvas rigged across each mast. Instead of flat cards, the
+  // sails are now BILLOWED: each plane gets a grid of vertices and a one-time
+  // push of its middle toward the bow (-Z), like wind from astern filling the
+  // canvas. Curved cloth catches the warm sun across its surface — instantly
+  // "real sailing ship" instead of "paper cutout". The bend happens ONCE here at
+  // build time (never per frame). DoubleSide shows it from deck and sea alike.
+  const billowSail = (width: number, height: number): PlaneGeometry => {
+    const geo = new PlaneGeometry(width, height, 8, 6);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      // A smooth dome: zero at the edges, deepest (40 cm) in the center.
+      const belly =
+        0.4 *
+        Math.sin(Math.PI * (x / width + 0.5)) *
+        Math.sin(Math.PI * (y / height + 0.5));
+      pos.setZ(i, -belly); // belly toward -Z — the wind blows us toward the bow
+    }
+    geo.computeVertexNormals(); // re-light the curved surface correctly
+    return geo;
+  };
   addPart(
-    new PlaneGeometry(2.2, 2.6),
+    billowSail(2.6, 3.2),
     sailMat,
     0,
-    DECK_Y + 3.2, // hung high on the main mast
+    DECK_Y + 4.2, // hung high on the (taller) main mast
     mainMastZ,
   );
   addPart(
-    new PlaneGeometry(1.8, 2.0),
+    billowSail(2.0, 2.4),
     sailMat,
     0,
-    DECK_Y + 2.6, // hung on the shorter mizzen mast
+    DECK_Y + 3.4, // hung on the shorter mizzen mast
     mizzenMastZ,
   );
+
+  // Yards — the horizontal spars the sails hang from. One wood crossbar across
+  // the top edge of each sail; this single shape is what makes the silhouette
+  // read "square-rigged tall ship" from any distance.
+  const mainYard = addPart(
+    new CylinderGeometry(0.045, 0.045, 2.9),
+    woodMat,
+    0,
+    DECK_Y + 5.8,
+    mainMastZ,
+  );
+  mainYard.object3D!.rotation.z = Math.PI / 2; // lay the spar horizontal
+  const mizzenYard = addPart(
+    new CylinderGeometry(0.045, 0.045, 2.3),
+    woodMat,
+    0,
+    DECK_Y + 4.6,
+    mizzenMastZ,
+  );
+  mizzenYard.object3D!.rotation.z = Math.PI / 2;
+
+  // Pennant — a slim gold flag at the very masthead. Its geometry is shifted so
+  // the LEFT edge sits on the mast (the pivot), letting the AmbientMotionSystem
+  // flutter it by rotating around Y. MeshBasicMaterial = always bright.
+  const pennantGeo = new PlaneGeometry(0.55, 0.16);
+  pennantGeo.translate(0.275, 0, 0); // pivot at the leading (mast) edge
+  const pennantMesh = new Mesh(
+    pennantGeo,
+    new MeshBasicMaterial({ color: PALETTE.GOLD, side: DoubleSide, fog: false }),
+  );
+  pennantMesh.position.set(0, DECK_Y + mainMastHeight + 0.1, mainMastZ);
+  const pennant = world.createTransformEntity(pennantMesh, {
+    parent: shipGroup,
+    persistent: true,
+  });
 
   // 4f. Bow / prow — the pointed FRONT of the ship, and the strongest "this is a
   // boat heading out to sea" cue. We build the point from a single box turned 45°
@@ -423,5 +571,209 @@ export function createVoyageEnvironment(world: World): VoyageEnvironment {
   );
   bowsprit.object3D!.rotation.x = -1.326; // ≈ -76°: forward and tilted slightly up
 
-  return { shipGroup, ocean, sun };
+  // --- 5. Clouds ----------------------------------------------------------------
+  // Seven puffball clouds drifting high over the sea: each is 3 squashed spheres
+  // overlapping into one fluffy cluster. ONE shared geometry + ONE shared unlit
+  // material for all of them (cheap), fog off so they stay bright. The whole
+  // bank hangs off a single group that the AmbientMotionSystem rotates very
+  // slowly — a full lap takes about an hour, just enough to feel alive.
+  const cloudGeo = new SphereGeometry(1, 7, 5);
+  const cloudMat = new MeshBasicMaterial({ color: "#f7f3ea", fog: false });
+  const cloudsGroup = new Group();
+  // Each row: cluster center [x, y, z] far out on a wide ring. Two sit near the
+  // sun's corner of the sky (-X, -Z) so the brightest sky has clouds to catch.
+  const cloudSpots: [number, number, number][] = [
+    [-180, 62, -210],
+    [-90, 75, -260],
+    [150, 58, -200],
+    [240, 70, -60],
+    [200, 80, 160],
+    [-40, 66, 280],
+    [-260, 72, 80],
+  ];
+  for (const [cx, cy, cz] of cloudSpots) {
+    const puffs: [number, number, number, number, number][] = [
+      // [offsetX, offsetY, offsetZ, scaleX..] — a big middle, two smaller sides
+      [0, 0, 0, 7, 2.2],
+      [-5, -0.6, 1.5, 5, 1.8],
+      [4.5, -0.4, -1, 4, 1.5],
+    ];
+    for (const [ox, oy, oz, sx, sy] of puffs) {
+      const puff = new Mesh(cloudGeo, cloudMat);
+      puff.position.set(cx + ox, cy + oy, cz + oz);
+      puff.scale.set(sx, sy, sx * 0.55);
+      cloudsGroup.add(puff);
+    }
+  }
+  world.createTransformEntity(cloudsGroup, {
+    parent: world.sceneEntity,
+    persistent: true,
+  });
+
+  // --- 6. Seagulls ---------------------------------------------------------------
+  // Three little gulls circling the masts. Each bird is 3 tiny boxes (a body and
+  // two wings) hanging from its own invisible PIVOT at the center of the ship;
+  // spinning the pivot swings the bird in a wide circle, and the
+  // AmbientMotionSystem flaps the wings and bobs the height. Unlit cream so they
+  // never silhouette black against the sky.
+  const gullMat = new MeshBasicMaterial({ color: PALETTE.CREAM, fog: false });
+  const gullBodyGeo = new BoxGeometry(0.1, 0.06, 0.22);
+  const gullWingGeo = new BoxGeometry(0.42, 0.015, 0.12);
+  const gulls: GullRig[] = [];
+  const gullSpecs = [
+    { radius: 4.5, speed: 0.35, phase: 0.0 },
+    { radius: 6.0, speed: 0.45, phase: 2.1 },
+    { radius: 7.0, speed: -0.4, phase: 4.2 }, // negative = circles the other way
+  ];
+  for (const spec of gullSpecs) {
+    const pivot = new Group();
+    pivot.position.set(0, 9, -4); // high over the foredeck, clear of the masts
+    const gull = new Group();
+    gull.position.set(spec.radius, 0, 0);
+    const body = new Mesh(gullBodyGeo, gullMat);
+    const leftWing = new Mesh(gullWingGeo, gullMat);
+    leftWing.position.set(-0.24, 0, 0);
+    leftWing.rotation.z = 0.25;
+    const rightWing = new Mesh(gullWingGeo, gullMat);
+    rightWing.position.set(0.24, 0, 0);
+    rightWing.rotation.z = -0.25;
+    gull.add(body, leftWing, rightWing);
+    pivot.add(gull);
+    world.createTransformEntity(pivot, {
+      parent: world.sceneEntity,
+      persistent: true,
+    });
+    gulls.push({
+      pivot,
+      gull,
+      leftWing,
+      rightWing,
+      speed: spec.speed,
+      phase: spec.phase,
+    });
+  }
+
+  // --- 7. Distant islands ---------------------------------------------------------
+  // Low hazy cones far out on the horizon in every direction — a depth cue, and
+  // something to sail toward. One shared 7-sided cone geometry, one shared hazy
+  // blue-grey material; the distance fog pushes them back convincingly. All of
+  // them stay BELOW the horizon glow line (very flat, very far).
+  const islandGeo = new CylinderGeometry(0, 1, 1, 7); // radius-0 top = a cone
+  const islandMat = new MeshStandardMaterial({ color: "#7e95a8", roughness: 1.0 });
+  const islandsGroup = new Group();
+  const islandSpots: [number, number, number, number, number][] = [
+    // [x, z, footprint, height, footprintZ]
+    [-60, -300, 140, 22, 110], // dead ahead off the bow — "land ho!"
+    [-130, -290, 60, 9, 50], // its smaller companion
+    [200, -240, 110, 14, 90], // off the starboard bow
+    [-300, 60, 160, 18, 120], // far off to port
+    [120, 280, 90, 10, 70], // astern, so turning around isn't empty
+  ];
+  for (const [x, z, sx, sy, sz] of islandSpots) {
+    const island = new Mesh(islandGeo, islandMat);
+    // Cones are centered on their middle, so sit the base at the waterline.
+    island.position.set(x, WATER_Y + sy / 2, z);
+    island.scale.set(sx, sy, sz);
+    islandsGroup.add(island);
+  }
+  world.createTransformEntity(islandsGroup, {
+    parent: world.sceneEntity,
+    persistent: true,
+  });
+
+  // --- 8. Hull foam ----------------------------------------------------------------
+  // Four soft white rings hugging the waterline along the hull — the "white
+  // water" where the sea meets the ship. They parent to the WORLD (not the
+  // ship), pinned at water height, so when the ship gently bobs it moves through
+  // its own foam exactly like a real moored hull. One shared material whose
+  // opacity the AmbientMotionSystem pulses gently.
+  const foamMaterial = new MeshBasicMaterial({
+    color: PALETTE.FOAM,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+  });
+  const hullFoamGeo = new RingGeometry(0.3, 0.7, 14);
+  const foamGroup = new Group();
+  for (const [fx, fz] of [
+    [-1.45, -3], // port side, toward the bow (ship z offset already applied)
+    [1.45, -3],
+    [-1.45, 1],
+    [1.45, 1],
+  ]) {
+    const foam = new Mesh(hullFoamGeo, foamMaterial);
+    foam.rotation.x = -Math.PI / 2; // lay flat on the water
+    foam.scale.set(3.5, 1.4, 1);
+    foam.position.set(fx, WATER_Y + 0.01, fz);
+    foamGroup.add(foam);
+  }
+  world.createTransformEntity(foamGroup, {
+    parent: world.sceneEntity,
+    persistent: true,
+  });
+
+  return {
+    shipGroup,
+    ocean,
+    sun,
+    anim: {
+      sunLight,
+      oceanTexture,
+      oceanMaterial: oceanMat,
+      pennant: pennant.object3D!,
+      cloudsGroup,
+      gulls,
+      foamMaterial,
+    },
+  };
+}
+
+// ----------------------------------------------------------------------------
+// makeWaterTexture — paints a small square of "sea" onto a hidden 2D canvas:
+// the base ocean blue, ~140 soft wave-top dabs in lighter and darker blues, and
+// ~40 tiny cream flecks that catch the sun as sparkle. Tiled across the big
+// ocean plane (and slowly scrolled by the AmbientMotionSystem) it turns the
+// flat sheet into living water. Built ONCE at startup.
+// ----------------------------------------------------------------------------
+function makeWaterTexture(): CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+
+  ctx.fillStyle = PALETTE.OCEAN;
+  ctx.fillRect(0, 0, size, size);
+
+  // Soft elliptical wave dabs — half lighter (sunlit tops), half darker
+  // (troughs). Random sizes and angles so no repeating pattern jumps out.
+  const dab = (fill: string, count: number) => {
+    ctx.fillStyle = fill;
+    for (let i = 0; i < count; i++) {
+      const x = Math.random() * size;
+      const y = Math.random() * size;
+      const rx = 6 + Math.random() * 20;
+      const ry = 3 + Math.random() * 6;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, Math.random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  };
+  dab("rgba(77, 108, 128, 0.30)", 70); // PALETTE.WATER_LIT — lit wave tops
+  dab("rgba(54, 80, 95, 0.25)", 70); // a darker blue — the troughs
+
+  // Tiny cream flecks: the sparkle the sun glints off as the texture drifts.
+  ctx.fillStyle = "rgba(216, 230, 238, 0.5)";
+  for (let i = 0; i < 40; i++) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    ctx.fillRect(x, y, 1 + Math.random(), 1 + Math.random());
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace; // canvas colors are sRGB — tell three so
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(26, 26); // ~19 m of sea per tile on the 500 m plane
+  return texture;
 }
