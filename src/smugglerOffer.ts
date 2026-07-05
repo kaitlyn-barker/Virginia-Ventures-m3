@@ -164,6 +164,12 @@ export class SmugglerOfferSystem extends createSystem({
       smugglerTotal += SMUGGLER_VALUE[good] ?? 0;
     }
 
+    // State the gamble PLAINLY as "N in 10", derived from the catch-chance
+    // constant so the copy can never drift from the real odds. Risk literacy,
+    // not a hidden trap: the student sees the odds before choosing AND the roll
+    // result after, so the lesson is about weighing a known risk, not luck.
+    const catchInTen = Math.round(SMUGGLE_DISCOVERY_CHANCE * 10);
+
     // TWO small flags guard the flow:
     //   choiceLocked — a buyer has been clicked, so both buyer buttons stop
     //                  working (no re-deciding the sale).
@@ -290,7 +296,7 @@ export class SmugglerOfferSystem extends createSystem({
           // The whole card's edge turns green, and one low all-clear bell rings.
           card?.setProperties({ borderColor: "#9fd29f" });
           reveal(
-            `You got away with it! The smuggler pays ${smugglerTotal} coins. Crown Compliance slips to ${voyageState.crownCompliance} / 100.`,
+            `The odds were ${catchInTen} in 10 to be caught, and this time luck was with you. You got away with it! The smuggler pays ${smugglerTotal} coins. Crown Compliance slips to ${voyageState.crownCompliance} / 100.`,
             "#9fd29f",
           );
           ringShipBell(1);
@@ -311,7 +317,7 @@ export class SmugglerOfferSystem extends createSystem({
           // customs bells raise the alarm.
           card?.setProperties({ borderColor: "#8a4636" });
           reveal(
-            `Caught! Customs seize most of your cargo. You keep only ${fineProfit} coins. Crown Compliance crashes to ${voyageState.crownCompliance} / 100.`,
+            `The odds were ${catchInTen} in 10 to be caught, and today luck was not with you. Caught! Customs seize most of your cargo. You keep only ${fineProfit} coins. Crown Compliance crashes to ${voyageState.crownCompliance} / 100.`,
             "#e08a5a",
           );
           ringShipBell(3, 250);
@@ -337,7 +343,7 @@ export class SmugglerOfferSystem extends createSystem({
     englandAmountText?.setProperties({ text: `${englishAmount} coins` });
     smugglerAmountText?.setProperties({ text: `${smugglerTotal} coins` });
     outcome?.setProperties({
-      text: `Take England's legal ${englishAmount} coins, or gamble on the smuggler's ${smugglerTotal} coins?`,
+      text: `Take England's legal ${englishAmount} coins, or gamble on the smuggler's ${smugglerTotal} coins? The smuggler pays more - but there is a ${catchInTen} in 10 chance customs catch you.`,
       color: "#9fb0bb",
     });
 

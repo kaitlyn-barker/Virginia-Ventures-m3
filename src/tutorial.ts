@@ -77,7 +77,7 @@ export const TUTORIALS: Record<string, TutorialContent> = {
   smuggler: {
     eyebrow: "STEP 4 OF 7 - A SHADY OFFER",
     title: "Loyalty or Profit?",
-    body: "A smuggler offers MORE coins than England. But selling to him breaks the law. If customs catch you, they seize your cargo. Safe and legal, or risky and rich?",
+    body: "A smuggler offers MORE coins than England. But selling to him breaks the law. There is a 3 in 10 chance customs catch you and seize your cargo. Safe and legal, or risky and rich?",
     task: "What to do: Choose your buyer, then tap Continue.",
     button: "Got it - weigh the offer",
   },
