@@ -198,7 +198,37 @@
     text-align: left;
     line-height: 1.35;
     margin-top: 3;
+    margin-bottom: 3;
+  }
+
+  /* The Captain's Log: a bordered recap of the choices this voyage, so students
+     step out of the headset holding concrete material for the written debrief. */
+  .log-box {
+    display: flex;
+    flex-direction: column;
+    padding: 3;
     margin-bottom: 4;
+    background-color: #ece0c4; /* the deeper parchment band */
+    border-color: #c8962a; /* the gilt kit border */
+    border-width: 0.2;
+    border-radius: 2;
+  }
+
+  /* The log's little heading. */
+  .log-title {
+    font-size: 3.2;
+    font-weight: bold;
+    color: #5b3a21;
+    text-align: left;
+    margin-bottom: 1;
+  }
+
+  /* The log body: every choice on its own line (newline-separated at runtime). */
+  .log-body {
+    font-size: 2.8;
+    color: #5b3a21;
+    text-align: left;
+    line-height: 1.4;
   }
 
   /* The button row at the bottom: Sail Again and Finish side by side. */
@@ -288,6 +318,18 @@
     <span id="crown-compliance" class="score-value">0 / 100</span>
   </div>
 
+  <!-- Score 4: Voyage Efficiency. Banded to a 1-3 star rating from how briskly
+       the captain made each decision (the West Africa reflection never counts).
+       Both the value and the hint line are filled in at runtime, so both carry a
+       non-empty placeholder or the runtime text-set would be ignored. -->
+  <div class="score-row">
+    <div class="score-left">
+      <span class="score-name">Voyage Efficiency</span>
+      <span id="efficiency-hint" class="score-hint">How briskly you sailed</span>
+    </div>
+    <span id="voyage-efficiency" class="score-value">3 of 3 stars</span>
+  </div>
+
   <!-- The three stars. They ship dim; the scoring ceremony recolors each
        earned star to gold at runtime. The "*" body must stay non-empty or
        the runtime recolor would be ignored. (The panel font is missing many
@@ -311,6 +353,14 @@
        glyph - it renders as a broken box - so every dash here is a plain
        ASCII hyphen, the same rule the englandRules card follows. -->
   <span id="takeaway" class="takeaway">England's rules shaped your whole trip - what you carried, who you sold to, and who got rich. That is mercantilism.</span>
+
+  <!-- The Captain's Log: a plain-language recap of this voyage's choices, built
+       at runtime from voyageState.decisionsLog (see src/voyageSummary.ts). The
+       body carries a non-empty placeholder so the runtime text-set is honored. -->
+  <div class="log-box">
+    <span class="log-title">Captain's Log</span>
+    <span id="captains-log" class="log-body">Your choices this voyage will appear here.</span>
+  </div>
 
   <!-- The two ways out: sail again (gold = go!) or finish for good. The
        Sail Again button is wired up at runtime by its id. -->

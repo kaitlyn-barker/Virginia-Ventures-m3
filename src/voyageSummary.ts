@@ -41,8 +41,9 @@ import {
   type Entity,
 } from "@iwsdk/core";
 
-// The voyage "logbook" - the scores we display live here.
-import { voyageState } from "./voyageState.js";
+// The voyage "logbook" - the scores we display live here. ratedEfficiency()
+// bands the (West-Africa-excluded) decision time into the fourth score.
+import { voyageState, ratedEfficiency } from "./voyageState.js";
 
 // The shared, safe teardown helper (frees GPU + clears the ECS).
 import { disposeEntityTree } from "./voyagePhases.js";
@@ -265,6 +266,31 @@ export class VoyageSummarySystem extends createSystem({
       : "England's rules shaped your whole trip - what you carried, who you sold to, and who got rich. That is mercantilism.";
     const takeaway = doc.getElementById("takeaway") as UIKit.Text | null;
     takeaway?.setProperties({ text: `${purseLine} ${lessonLine}` });
+
+    // --- Voyage Efficiency (the module's fourth score) -------------------------
+    // Banded to 1-3 stars from how briskly the captain made each decision. The
+    // West Africa reflection is never timed, so it can't cost a star. Revealed
+    // only here - never as a countdown during play. Shown static (no count-up).
+    const eff = ratedEfficiency();
+    (doc.getElementById("voyage-efficiency") as UIKit.Text | null)?.setProperties({
+      text: `${eff.stars} of 3 stars`,
+    });
+    (doc.getElementById("efficiency-hint") as UIKit.Text | null)?.setProperties({
+      text: eff.label,
+    });
+
+    // --- The Captain's Log recap ----------------------------------------------
+    // A plain-language list of the choices this voyage, one per line, so students
+    // leave with concrete material for the written reflection. Lead with the hold
+    // they loaded; if a decision left the log empty (shouldn't happen), fall back
+    // to a gentle default so the box is never blank.
+    const log = voyageState.decisionsLog as string[];
+    const logText = log.length
+      ? log.map((line) => `- ${line}`).join("\n")
+      : "You completed your voyage across the Atlantic.";
+    (doc.getElementById("captains-log") as UIKit.Text | null)?.setProperties({
+      text: logText,
+    });
 
     console.log(
       "Captain's Voyage - summary ceremony begins. profit:",

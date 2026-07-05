@@ -46,9 +46,10 @@ import { registerVirginiaPhase } from "./voyagePhases.js";
 import { showWelcome } from "./welcomePanel.js";
 import { showTutorial, TUTORIALS } from "./tutorial.js";
 
-// The voyage's "logbook" — a single data object holding the state of the trip.
-// No gameplay uses it yet; we import it here so we can confirm it loads.
-import { voyageState } from "./voyageState.js";
+// The voyage's "logbook" — a single data object holding the state of the trip —
+// plus startTiming(), which starts the Voyage Efficiency stopwatch the moment the
+// first real decision (loading cargo) is put in front of the student.
+import { voyageState, startTiming } from "./voyageState.js";
 
 // Print the starting state to the browser console on load. Open the browser's
 // DevTools console to confirm you see this object when the app starts.
@@ -174,6 +175,10 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
       // then stays up for the whole voyage.
       createHud(world);
       refreshHud();
+      // The first real decision is about to appear, so start the Voyage
+      // Efficiency stopwatch here. (It counts only decision time; the West
+      // Africa reflection later pauses it so reflecting never costs a star.)
+      startTiming();
       const cargoPanel = createCargoPanel(world);
       registerVirginiaPhase(world, [virginiaPort, cargoPanel]);
     });

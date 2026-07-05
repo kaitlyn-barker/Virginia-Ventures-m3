@@ -47,7 +47,12 @@ import {
 
 // The voyage "logbook", the storm's tuning constant (STORM_DAMAGE_CHANCE), and the
 // slot-size lookup (GOOD_SLOTS) we read to find the heaviest good to jettison.
-import { voyageState, GOOD_SLOTS, STORM_DAMAGE_CHANCE } from "./voyageState.js";
+import {
+  voyageState,
+  GOOD_SLOTS,
+  STORM_DAMAGE_CHANCE,
+  markPhase,
+} from "./voyageState.js";
 
 // The reusable tutorial coach: a short teaching card gates the storm decision.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
@@ -220,8 +225,10 @@ export class StormDecisionSystem extends createSystem({
       ringShipBell(1);
       refreshHud();
 
-      decisions.push("storm: jettisoned");
       const label = tossed ? GOOD_LABEL[tossed] ?? tossed : "cargo";
+      decisions.push(
+        `A storm struck - you threw the ${label} overboard to keep the ship safe.`,
+      );
       reveal(`You heave the ${label} over the side! The ship steadies.`, "#9fd29f");
       console.log(
         "Captain's Voyage - storm: jettisoned",
@@ -242,11 +249,15 @@ export class StormDecisionSystem extends createSystem({
       if (Math.random() < STORM_DAMAGE_CHANCE) {
         voyageState.stormDamage = true;
         reveal("Ouch! The storm damaged your cargo. It will sell for less.", "#e08a5a");
+        decisions.push(
+          "A storm struck - you rode it out, and the cargo took damage.",
+        );
       } else {
         reveal("You held on and got lucky! Your cargo is safe.", "#9fd29f");
+        decisions.push(
+          "A storm struck - you rode it out and kept every crate safe.",
+        );
       }
-
-      decisions.push("storm: rode it out");
       // The logbook changed (and maybe stormDamage too) - repaint the ledger.
       refreshHud();
       console.log(
@@ -266,8 +277,10 @@ export class StormDecisionSystem extends createSystem({
         return;
       }
 
-      // The storm is beaten - start the sky re-warming NOW, so England arrives
-      // under clearing weather instead of mid-tempest.
+      // Close the storm segment's Efficiency clock (the England haggle starts the
+      // next one), then start the sky re-warming NOW, so England arrives under
+      // clearing weather instead of mid-tempest.
+      markPhase("storm");
       setStormPhase("clearing");
 
       const world = this.world;

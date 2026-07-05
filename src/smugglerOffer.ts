@@ -55,6 +55,7 @@ import {
   voyageState,
   SMUGGLER_PRICE,
   SMUGGLE_DISCOVERY_CHANCE,
+  markPhase,
 } from "./voyageState.js";
 
 // The next (existing) screen: the animated route map home. We hand off to it
@@ -225,7 +226,9 @@ export class SmugglerOfferSystem extends createSystem({
       voyageState.soldVia = "england";
       voyageState.profit = englishAmount;
       // crownCompliance is LEFT at 100 — obeying the Crown costs nothing.
-      decisions.push("sale: england (legal)");
+      decisions.push(
+        `You sold to England for ${englishAmount} coins - legal and loyal to the Crown.`,
+      );
 
       reveal(
         `A fair, legal sale! England pays ${englishAmount} coins. The King is pleased. Crown Compliance holds at ${voyageState.crownCompliance} / 100.`,
@@ -278,7 +281,9 @@ export class SmugglerOfferSystem extends createSystem({
             0,
             voyageState.crownCompliance - SMUGGLE_SUCCESS_COMPLIANCE_PENALTY,
           );
-          decisions.push("sale: smuggler (got away)");
+          decisions.push(
+            `You sold to the smuggler for ${smugglerTotal} coins and slipped away in the dark.`,
+          );
           // The whole card's edge turns green, and one low all-clear bell rings.
           card?.setProperties({ borderColor: "#9fd29f" });
           reveal(
@@ -296,7 +301,9 @@ export class SmugglerOfferSystem extends createSystem({
             0,
             voyageState.crownCompliance - SMUGGLE_CAUGHT_COMPLIANCE_PENALTY,
           );
-          decisions.push("sale: smuggler (caught)");
+          decisions.push(
+            `You sold to the smuggler - but customs caught you, seized the cargo, and left you only ${fineProfit} coins.`,
+          );
           // The card's edge flushes the illicit red-brown, and three fast
           // customs bells raise the alarm.
           card?.setProperties({ borderColor: "#8a4636" });
@@ -362,6 +369,10 @@ export class SmugglerOfferSystem extends createSystem({
 
   /** Leave England for good and head home — exactly as the old England code did. */
   private handleContinue(entity: Entity) {
+    // Close the smuggler decision's Efficiency clock — this is the last timed
+    // decision before the (untimed) journey home.
+    markPhase("smuggler");
+
     // Advance the logbook to leg 3 (the journey home) — the SAME value the route
     // map + summary already expect, so they pick up from here unchanged.
     voyageState.currentLeg = "leg3";

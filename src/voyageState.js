@@ -4,9 +4,10 @@
 // experience. Think of `voyageState` as the ship's logbook: one plain object
 // that every part of the app can read from and update as the voyage unfolds.
 //
-// For now this is JUST DATA — there is no gameplay wired up yet. We export it
-// so other files can import it later, and index.ts logs it to the console on
-// load so you can confirm everything is connected.
+// Every phase file READS from and WRITES to this one object — that IS the
+// gameplay. Alongside the state it also holds the tunable balance constants and
+// a tiny stopwatch (markPhase / ratedEfficiency) that scores Voyage Efficiency
+// at the summary. Keeping all of that in one place is the project convention.
 // ----------------------------------------------------------------------------
 
 export const voyageState = {
@@ -79,6 +80,26 @@ export const voyageState = {
   // The price England AGREED to after haggling, recorded BEFORE the captain decides
   // whether to take it or defy the Crown and sell to the smuggler instead. Starts 0.
   englishSaleAmount: 0,
+
+  // --- Voyage Efficiency + Captain's Log (revealed only at the summary) ---------
+  // Efficiency is one of the module's three required scores. We time each
+  // decision point (NOT the West Africa reflection, which is paused) and band the
+  // total into a 1-3 star rating shown ONLY on the summary — never a countdown
+  // during play, which would just rush a 10-year-old in a headset.
+
+  // One { label, seconds } entry per timed decision point, pushed at each phase
+  // hand-off by markPhase(). The West Africa leg calls pauseTiming() so its
+  // reflection is never counted.
+  phaseTimings: [],
+
+  // Fumbles that nudge Efficiency down: a load that didn't fit the hold, a haggle
+  // push that annoyed the merchant. Each adds WASTED_ACTION_PENALTY_SECONDS.
+  wastedActions: 0,
+
+  // Goods the captain WANTED to load at Virginia but had no room for. Deduped
+  // (a good is recorded once) so the summary's Captain's Log can answer the
+  // debrief question "What did you leave behind?" with concrete material.
+  leftBehind: [],
 };
 
 // GOOD_SLOTS maps each trade good to the specific cargo-hold slot number it
@@ -138,6 +159,76 @@ export const STORM_DAMAGE_CHANCE = 0.4;
 // How much of the cargo's value is lost when the storm damages it.
 // 0.15 means 15% is knocked off.
 export const STORM_DAMAGE_PCT = 0.15;
+
+// --- Voyage Efficiency tuning ---------------------------------------------------
+// The total decision time (in seconds) banded into a 1-3 star rating. Bands are
+// generous on purpose: this rewards a captain who keeps the voyage moving without
+// ever punishing one who reads carefully. The West Africa reflection is excluded
+// from the total entirely, so pausing to take in that history never costs a star.
+export const EFFICIENCY_BANDS = [
+  { maxSeconds: 210, stars: 3, label: "Swift and sure" }, //     <= 3.5 min
+  { maxSeconds: 360, stars: 2, label: "Steady and careful" }, // <= 6 min
+  { maxSeconds: Infinity, stars: 1, label: "You took your time" },
+];
+
+// Each fumble (a load that didn't fit, a haggle that annoyed the merchant) adds
+// this many seconds to the timed total, so wasted actions gently lower Efficiency.
+export const WASTED_ACTION_PENALTY_SECONDS = 20;
+
+// --- Voyage timing plumbing -----------------------------------------------------
+// A tiny stopwatch for Voyage Efficiency. It does NO per-frame work: markPhase()
+// is called only at decision-point hand-offs. The West Africa leg brackets itself
+// with pauseTiming()/resumeTiming() so that reflection is never counted.
+let _lastMarkMs = 0; //     performance.now() at the last mark (0 = not started)
+let _timingPaused = false; // true during the West Africa reflection
+
+/** Start (or restart) the voyage stopwatch. Call when the first decision begins. */
+export function startTiming() {
+  _lastMarkMs = performance.now();
+  _timingPaused = false;
+}
+
+/** Record the time spent since the previous mark, tagged with `label`. */
+export function markPhase(label) {
+  const now = performance.now();
+  if (!_timingPaused && _lastMarkMs > 0) {
+    voyageState.phaseTimings.push({
+      label,
+      seconds: Math.max(0, (now - _lastMarkMs) / 1000),
+    });
+  }
+  _lastMarkMs = now;
+}
+
+/** Stop counting time (used around the West Africa reflection). */
+export function pauseTiming() {
+  _timingPaused = true;
+}
+
+/** Resume counting time from now (the West Africa reflection is over). */
+export function resumeTiming() {
+  _timingPaused = false;
+  _lastMarkMs = performance.now();
+}
+
+/** Total of all timed segments, in seconds. */
+export function totalTimedSeconds() {
+  return voyageState.phaseTimings.reduce((sum, t) => sum + t.seconds, 0);
+}
+
+/**
+ * Band the timed total (plus any wasted-action penalty) into a star rating.
+ * Returns { stars, label, seconds } — the summary shows this and nothing else;
+ * the raw seconds are never displayed to the student.
+ */
+export function ratedEfficiency() {
+  const seconds =
+    totalTimedSeconds() + voyageState.wastedActions * WASTED_ACTION_PENALTY_SECONDS;
+  const band =
+    EFFICIENCY_BANDS.find((b) => seconds <= b.maxSeconds) ??
+    EFFICIENCY_BANDS[EFFICIENCY_BANDS.length - 1];
+  return { stars: band.stars, label: band.label, seconds };
+}
 
 // Log the whole logbook on load so you can confirm in the browser console that the
 // new gamification fields show up alongside the original ones. (index.ts also logs

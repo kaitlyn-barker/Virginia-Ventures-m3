@@ -42,6 +42,7 @@ import {
   ENGLAND_PRICE,
   STORM_DAMAGE_PCT,
   HAGGLE_MAX_ROUNDS,
+  markPhase,
 } from "./voyageState.js";
 
 // The next step: the smuggler's offer (England's legal haggled price vs. the
@@ -217,9 +218,15 @@ export class EnglandRulesSystem extends createSystem({
 
       if (Math.random() < HAGGLE_ANNOY_CHANCE) {
         // The merchant takes offense: a final, lower take-it-or-leave-it offer,
-        // and no more haggling. The student can still Accept it.
+        // and no more haggling. The student can still Accept it. Pushing too hard
+        // is a fumble (it cost coins), so it nudges Voyage Efficiency down and is
+        // noted in the Captain's Log.
         currentOffer = Math.round(base * HAGGLE_ANNOYED_PCT);
         pushingClosed = true;
+        voyageState.wastedActions += 1;
+        decisions.push(
+          "You pushed the merchant too hard and he cut his offer - a lesson in haggling.",
+        );
         paintButtons();
         renderOffer();
         saleMessage?.setProperties({
@@ -257,7 +264,13 @@ export class EnglandRulesSystem extends createSystem({
       settled = true;
       pushingClosed = true;
       voyageState.englishSaleAmount = currentOffer;
-      decisions.push(`england: agreed ${currentOffer} coins`);
+      // Note the agreed price for the Captain's Log, saying whether the captain
+      // simply took the opening offer or haggled the merchant upward.
+      decisions.push(
+        pushesUsed > 0
+          ? `You haggled England up to a ${currentOffer}-coin offer in ${pushesUsed} round${pushesUsed === 1 ? "" : "s"}.`
+          : `You accepted England's opening offer of ${currentOffer} coins.`,
+      );
 
       // The logbook changed (the agreed price is in), so repaint the ledger.
       refreshHud();
@@ -327,6 +340,9 @@ export class EnglandRulesSystem extends createSystem({
   private proceedToSmugglerStep(entity: Entity) {
     if (this.forwarding) return;
     this.forwarding = true;
+    // Close the England haggle segment's Efficiency clock (the smuggler decision
+    // starts the next one).
+    markPhase("england");
     const world = this.world;
     // Defer one tick so we aren't disposing the very panel whose click is still
     // being dispatched, and strip its interaction tags first so the InputSystem

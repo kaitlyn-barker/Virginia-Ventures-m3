@@ -30,7 +30,7 @@ import {
 
 // The voyage "logbook" (live state we update), the fixed slot costs, and the
 // per-good BUY prices (what each good costs the captain to load at Virginia).
-import { voyageState, GOOD_SLOTS, GOOD_COST } from "./voyageState.js";
+import { voyageState, GOOD_SLOTS, GOOD_COST, markPhase } from "./voyageState.js";
 
 // Leaving Virginia: hand off to the phase controller, which clears this leg's
 // scenery (this very panel included) and raises the England port in its place.
@@ -138,6 +138,12 @@ export class VirginiaCargoSystem extends createSystem({
     // onto the real voyageState.cargoLoaded (same array), which is the gameplay.
     const cargo = voyageState.cargoLoaded as string[];
 
+    // The voyage narrative + the "wanted it but had no room" set, both surfaced
+    // in the summary's Captain's Log so students leave the headset with concrete
+    // material for the written reflection ("What did you leave behind?").
+    const decisions = voyageState.decisionsLog as string[];
+    const leftBehind = voyageState.leftBehind as string[];
+
     // --- How many slots are used right now ------------------------------------
     // Sum GOOD_SLOTS for every good already in the hold. This is the heart of
     // the room check: it's recomputed fresh each time so it's always correct.
@@ -238,6 +244,19 @@ export class VirginiaCargoSystem extends createSystem({
           color: "#e08a5a",
         });
         flashSlotsFull();
+
+        // Record the trade-off for the debrief: this good was WANTED but had no
+        // room. Count it as a fumble (nudges Voyage Efficiency down a touch) and
+        // note it in the Captain's Log ONCE per good, so spamming the button
+        // can't flood the log with duplicate lines.
+        voyageState.wastedActions += 1;
+        const label = GOOD_INFO[goodName]?.label ?? goodName;
+        if (!leftBehind.includes(goodName)) {
+          leftBehind.push(goodName);
+          decisions.push(
+            `You wanted ${label}, but the hold was full - left it behind.`,
+          );
+        }
       }
 
       // Redraw the hold and the Set Sail state to match whatever just happened.
@@ -262,6 +281,17 @@ export class VirginiaCargoSystem extends createSystem({
 
       // Advance the voyage to its first leg (Virginia -> England).
       voyageState.currentLeg = "leg1";
+
+      // Log the hold for the Captain's Log recap, then stop the Virginia
+      // segment's Efficiency clock (the storm decision starts the next one).
+      const loadedLabels = cargo
+        .map((good) => GOOD_INFO[good]?.label ?? good)
+        .join(", ");
+      decisions.push(
+        `You loaded ${loadedLabels} at Virginia for ${voyageState.purchaseCost} coins.`,
+      );
+      markPhase("virginia");
+
       message?.setProperties({
         text: `Anchors aweigh! You spent ${voyageState.purchaseCost} coins. Off to England!`,
         color: "#9fd29f",
