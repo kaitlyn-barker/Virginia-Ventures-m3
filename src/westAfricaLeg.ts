@@ -51,8 +51,9 @@ import { setHudVisible } from "./hud.js";
 // is only ~1.7 degrees of ship roll — a somber tone, well within comfort.)
 import { setStormPhase } from "./ambientMotion.js";
 
-// The safe teardown helper (frees GPU + clears the ECS).
-import { disposeEntityTree } from "./voyagePhases.js";
+// The safe teardown helper (frees GPU + clears the ECS), and the England-port
+// teardown so the quay doesn't linger behind the offshore narration.
+import { disposeEntityTree, teardownEnglandPort } from "./voyagePhases.js";
 
 // ----------------------------------------------------------------------------
 // The narration script — one idea per card, written at a 5th-grade reading level.
@@ -221,6 +222,9 @@ export function beginWestAfricaLeg(world: World, onDone: () => void): void {
   // reflecting here can never affect the score.
   setHudVisible(false);
   pauseTiming();
+  // The ship has sailed from England: clear the England quay + colonists so only
+  // the ship and the open sea remain behind the narration.
+  teardownEnglandPort(world);
   // The ship lies at anchor offshore at dusk — a gentle overcast, not a storm.
   setStormPhase("building");
   voyageState.currentLeg = "westafrica";

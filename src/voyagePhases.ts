@@ -66,6 +66,12 @@ interface VoyagePhaseState {
 
 let state: VoyagePhaseState | null = null;
 
+// The England port group, stashed once it's built so a later leg can tear it
+// down. The West Africa leg calls teardownEnglandPort() when the ship "sails"
+// away from England, so the quay and its colonists don't linger behind the
+// offshore-at-dusk narration (they're not persistent, just never cleared before).
+let englandPortGroup: Entity | null = null;
+
 /**
  * Record the Virginia leg's scenery so we can clear it later. Call once from
  * index.ts, passing the port group entity and the cargo panel entity.
@@ -244,6 +250,7 @@ export function sailToEngland(): void {
 
       beginStormDecision(world, () => {
         const englandPort = createEnglandPort(world);
+        englandPortGroup = englandPort; // remember it so West Africa can clear it
         // Populate the England quay with its colonists (parented to the port
         // group so they share the leg's lifecycle — and ride the glide-in).
         addEnglandColonists(world, englandPort);
@@ -278,6 +285,20 @@ export function sailToEngland(): void {
       departAndStorm();
     }
   }, 0);
+}
+
+/**
+ * teardownEnglandPort — dispose the England quay + its colonists. Called when the
+ * ship leaves England for the West Africa leg, so only the ship and the open sea
+ * remain (the "at anchor offshore at dusk" reading). Safe to call more than once;
+ * a no-op once the port is gone.
+ */
+export function teardownEnglandPort(world: World): void {
+  const port = englandPortGroup;
+  englandPortGroup = null;
+  if (port && port.active) {
+    disposeEntityTree(world, port);
+  }
 }
 
 // ----------------------------------------------------------------------------
