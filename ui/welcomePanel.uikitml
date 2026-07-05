@@ -146,7 +146,7 @@
 
   <span class="body">You are the captain of a trading ship in the 1700s. Buy goods in Virginia. Sail the Atlantic. Sell them in England. Keep your profit - and decide how loyal you stay to the King.</span>
 
-  <span class="section-label">Your three scores</span>
+  <span class="section-label">Your four scores</span>
   <div class="score-row">
     <span class="score-name">Cargo Value</span>
     <span class="score-desc">what England says your goods are worth.</span>
@@ -159,9 +159,13 @@
     <span class="score-name">Crown Compliance</span>
     <span class="score-desc">how well you follow the King's rules.</span>
   </div>
+  <div class="score-row">
+    <span class="score-name">Voyage Efficiency</span>
+    <span class="score-desc">how briskly you made your choices.</span>
+  </div>
 
   <span class="section-label">Controls</span>
-  <span class="controls">Move with the thumbstick (or WASD keys). Point at a button and pull the trigger - or click - to choose.</span>
+  <span class="controls">Move with the thumbstick (or WASD keys). Point at a button and pull the trigger - or click - to choose. If a card ends up behind you, look back and it drifts into view - or press B or Y (R in the browser) to call it front and center.</span>
 
   <button id="welcome-begin">Begin Voyage!</button>
 </div>

@@ -26,6 +26,10 @@ import { createUiSounds } from "./uiFx.js";
 import { registerCargoProps } from "./cargoProps.js";
 import { createHud, refreshHud } from "./hud.js";
 
+// Lazy panel follow: keeps decision cards from ending up behind a student who
+// physically turns away (the #1 classroom failure mode).
+import { registerPanelFollow } from "./panelFollow.js";
+
 // The Virginia leg's port scenery (dock, cargo, shore, sign) — sits on the base.
 import { createVirginiaPort } from "./virginiaPort.js";
 
@@ -121,6 +125,10 @@ World.create(document.getElementById("scene-container") as HTMLDivElement, {
   // props (real crates appear on deck as goods are bought).
   createUiSounds(world);
   registerCargoProps(world, env.shipGroup);
+
+  // Keep decision cards in view: if the player turns away from one, it glides
+  // back in front of their gaze (press B/Y, or "R" in the browser, to recenter).
+  registerPanelFollow(world);
 
   // Crew the ship: a few sailors at work on the deck and a lookout at the bow.
   // They parent to the PERSISTENT ship group, so they sail along through every
