@@ -291,7 +291,11 @@ export function createRouteMap(world: World): Entity {
   addLabel(world, group, "England", 0.3, 0.35); // up-right of the top port dot
   addLabel(world, group, "Virginia", -0.52, -0.46); // below the lower-left port
   addLabel(world, group, "West Africa", 0.52, -0.46, 0.6); // below the lower-right port
-  addLabel(world, group, "you sailed all three legs", 0.0, -0.41, 0.85, 0.16); // base caption
+  // Caption sits INSIDE the triangle (its empty center), clear of the Virginia
+  // and West Africa port labels down at the base. The ship only sails the edges,
+  // so the interior is free. Roomy height so the phrase can wrap to two lines
+  // within the triangle's width without clipping.
+  addLabel(world, group, "you sailed all three legs", 0.0, -0.12, 0.78, 0.3);
 
   routeMapGroup = group;
   return group;
