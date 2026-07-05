@@ -58,9 +58,10 @@ import {
   markPhase,
 } from "./voyageState.js";
 
-// The next (existing) screen: the animated route map home. We hand off to it
-// unchanged when the sale is settled.
+// The next screens: first the England "buy for the next leg" step (the second
+// half of the mercantile loop), then the existing animated route map home.
 import { beginReturnHomeMap } from "./returnHomeMap.js";
+import { beginEnglandGoodsBuy } from "./englandGoods.js";
 
 // The reusable tutorial coach: a short teaching card gates the smuggler's offer.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
@@ -367,18 +368,14 @@ export class SmugglerOfferSystem extends createSystem({
     }
   }
 
-  /** Leave England for good and head home — exactly as the old England code did. */
+  /** Sale settled — now BUY English goods for the trip home, then sail. */
   private handleContinue(entity: Entity) {
-    // Close the smuggler decision's Efficiency clock — this is the last timed
-    // decision before the (untimed) journey home.
+    // Close the smuggler decision's Efficiency clock — the buy step is untimed,
+    // and this is the last gamble before heading home.
     markPhase("smuggler");
-
-    // Advance the logbook to leg 3 (the journey home) — the SAME value the route
-    // map + summary already expect, so they pick up from here unchanged.
-    voyageState.currentLeg = "leg3";
     refreshHud();
     console.log(
-      "Captain's Voyage - leaving England. soldVia:",
+      "Captain's Voyage - sale settled. soldVia:",
       voyageState.soldVia,
       "profit:",
       voyageState.profit,
@@ -398,8 +395,9 @@ export class SmugglerOfferSystem extends createSystem({
       }
       entity.dispose();
 
-      // Hand off to the EXISTING route map transition (unchanged).
-      beginReturnHomeMap(world);
+      // The mercantile loop's second half: spend the proceeds on English goods,
+      // then hand off to the EXISTING route map home.
+      beginEnglandGoodsBuy(world, () => beginReturnHomeMap(world));
     }, 0);
   }
 }

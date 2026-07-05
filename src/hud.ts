@@ -26,7 +26,12 @@ import {
   type Entity,
 } from "@iwsdk/core";
 
-import { voyageState, GOOD_SLOTS, GOOD_COST } from "./voyageState.js";
+import {
+  voyageState,
+  GOOD_SLOTS,
+  GOOD_COST,
+  ENGLAND_GOODS_SLOTS,
+} from "./voyageState.js";
 
 const GOLD = "#c8962a"; // a lit compliance segment
 const DIM = "#3a2f24"; // a lost segment
@@ -84,31 +89,46 @@ export function setHudVisible(visible: boolean): void {
 export function refreshHud(): void {
   if (!els) return;
 
-  // Cargo: how many of the six slots are full right now.
-  const slotsUsed = (voyageState.cargoLoaded as string[]).reduce(
-    (n, good) => n + ((GOOD_SLOTS as Record<string, number>)[good] ?? 1),
-    0,
-  );
-  els.cargo.setProperties({
-    text: `${slotsUsed} / ${voyageState.cargoSlotsTotal} slots`,
-  });
-
-  // Coins: while buying we show the running spend; once the cargo is SOLD the
-  // line flips to what the sale earned — the number the summary celebrates.
-  // (The sale step records what the captain was paid in `profit`; some paths
-  // may also fill `salePrice`, so accept either as the "we sold!" signal.)
-  const earned = voyageState.salePrice || voyageState.profit;
-  if (earned > 0) {
-    els.coins.setProperties({ text: `Earned ${earned} coins` });
-  } else {
-    // Before Set Sail, purchaseCost is still 0, so total the hold live.
-    const liveSpend = (voyageState.cargoLoaded as string[]).reduce(
-      (n, good) => n + ((GOOD_COST as Record<string, number>)[good] ?? 0),
+  if (voyageState.currentLeg === "leg2buy") {
+    // During the England "buy for the next leg" step the ledger switches to the
+    // FRESH hold of English goods and the coins the captain has LEFT to spend, so
+    // the overhead ledger and the buy panel always agree.
+    const boughtSlots = (voyageState.goodsBoughtInEngland as string[]).reduce(
+      (n, good) => n + ((ENGLAND_GOODS_SLOTS as Record<string, number>)[good] ?? 1),
       0,
     );
-    const spent =
-      (voyageState.purchaseCost || liveSpend) + voyageState.detourCost;
-    els.coins.setProperties({ text: `Spent ${spent} coins` });
+    els.cargo.setProperties({
+      text: `${boughtSlots} / ${voyageState.cargoSlotsTotal} slots`,
+    });
+    const left = Math.max(0, voyageState.profit - voyageState.englandPurchaseCost);
+    els.coins.setProperties({ text: `${left} coins left` });
+  } else {
+    // Cargo: how many of the six slots are full right now.
+    const slotsUsed = (voyageState.cargoLoaded as string[]).reduce(
+      (n, good) => n + ((GOOD_SLOTS as Record<string, number>)[good] ?? 1),
+      0,
+    );
+    els.cargo.setProperties({
+      text: `${slotsUsed} / ${voyageState.cargoSlotsTotal} slots`,
+    });
+
+    // Coins: while buying we show the running spend; once the cargo is SOLD the
+    // line flips to what the sale earned — the number the summary celebrates.
+    // (The sale step records what the captain was paid in `profit`; some paths
+    // may also fill `salePrice`, so accept either as the "we sold!" signal.)
+    const earned = voyageState.salePrice || voyageState.profit;
+    if (earned > 0) {
+      els.coins.setProperties({ text: `Earned ${earned} coins` });
+    } else {
+      // Before Set Sail, purchaseCost is still 0, so total the hold live.
+      const liveSpend = (voyageState.cargoLoaded as string[]).reduce(
+        (n, good) => n + ((GOOD_COST as Record<string, number>)[good] ?? 0),
+        0,
+      );
+      const spent =
+        (voyageState.purchaseCost || liveSpend) + voyageState.detourCost;
+      els.coins.setProperties({ text: `Spent ${spent} coins` });
+    }
   }
 
   // Crown Compliance: light one segment per 10 points.

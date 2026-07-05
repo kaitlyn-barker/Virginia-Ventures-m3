@@ -100,6 +100,23 @@ export const voyageState = {
   // (a good is recorded once) so the summary's Captain's Log can answer the
   // debrief question "What did you leave behind?" with concrete material.
   leftBehind: [],
+
+  // --- England "buy for the next leg" (the mercantile loop) ---------------------
+  // After selling raw colonial goods, the captain spends the proceeds on English
+  // MANUFACTURED goods (made from colonial raw materials, sold back to colonists
+  // at England's price) to carry home. That round trip IS mercantilism.
+
+  // Which manufactured goods the captain bought in England (into a fresh 6-slot
+  // hold). Names from ENGLAND_GOODS_SLOTS; starts empty.
+  goodsBoughtInEngland: [],
+
+  // Coins PAID to England for those manufactured goods. Profit subtracts this.
+  englandPurchaseCost: 0,
+
+  // Coins the manufactured goods fetch when resold back home in Virginia (Leg 3
+  // payoff). Profit adds this. Resale beats the England price, so the loop nets
+  // a modest gain — England still set both prices.
+  virginiaResaleGain: 0,
 };
 
 // GOOD_SLOTS maps each trade good to the specific cargo-hold slot number it
@@ -128,6 +145,33 @@ export const GOOD_COST = {
   tobacco: 15, // sells for 30 -> +15 margin
   lumber: 30, //  sells for 50 -> +20 margin
   furs: 55, //    sells for 90 -> +35 margin
+};
+
+// --- England manufactured goods (the "buy for the next leg" step) ----------------
+// England sells finished goods MADE FROM colonial raw materials back to the
+// colonies at prices England sets. The captain buys these with the sale proceeds
+// and resells them at home for a modest gain — the mercantile loop in miniature.
+// Same 6-slot hold model as Virginia: bigger goods take more slots.
+export const ENGLAND_GOODS_SLOTS = {
+  tools: 1, //     iron tools — small, 1 slot
+  cloth: 2, //     bolts of textile — 2 slots
+  furniture: 3, // finished furniture — bulky, 3 slots
+};
+
+// What England CHARGES the colonist for each manufactured good (England's price).
+export const ENGLAND_GOODS_PRICE = {
+  tools: 25,
+  cloth: 45,
+  furniture: 80,
+};
+
+// What each manufactured good RESELLS for back in Virginia (Leg 3 payoff). Each
+// is above its England price, so carrying goods home turns a modest profit:
+// tools +10, cloth +15, furniture +25.
+export const VIRGINIA_RESALE_PRICE = {
+  tools: 35, //     paid 25 -> +10
+  cloth: 60, //     paid 45 -> +15
+  furniture: 105, // paid 80 -> +25
 };
 
 // SMUGGLER_PRICE maps each trade good to the price (in coins) a SMUGGLER will pay

@@ -170,19 +170,26 @@ export class VoyageSummarySystem extends createSystem({
       "crown-compliance",
     ) as UIKit.Text | null;
 
-    // "Spent" is everything the voyage cost: the goods bought at Virginia plus
-    // any storm-detour provisions - the same math the ledger HUD uses.
-    const spent = voyageState.purchaseCost + voyageState.detourCost;
+    // The full money story, now that the voyage is a complete round trip:
+    //   Earned  = the sale proceeds (voyageState.profit) + the Leg 3 payoff of
+    //             reselling the English goods back home (virginiaResaleGain).
+    //   Spent   = the Virginia goods + any storm detour + the English goods.
+    //   Kept    = Earned - Spent  (the number the "Coins you keep" hint promises).
+    // This is the outline's reconciliation:
+    //   kept = salePrice - purchaseCost - detourCost + resaleGain - englandCost.
+    const spent =
+      voyageState.purchaseCost +
+      voyageState.detourCost +
+      voyageState.englandPurchaseCost;
+    const earned = voyageState.profit + voyageState.virginiaResaleGain;
+    const kept = earned - spent;
 
     // Cargo Value: England's list valuation of the hold (the rules-based worth).
     this.targetCargo = voyageState.cargoValue;
-    // Profit: the coins the captain actually KEEPS. The sale step records what
-    // the buyer PAID in voyageState.profit; real profit subtracts what the
-    // voyage cost. The hint on the card says "Coins you keep", so the number
-    // must honor that - this is the game's core buying-margin lesson. (It can
-    // even go negative - a caught smuggler's fine may not cover the costs -
+    // Profit: the coins the captain actually KEEPS across the whole round trip.
+    // (It can go negative - a caught smuggler's fine may not cover the costs -
     // and a negative number is exactly the right lesson in that moment.)
-    this.targetProfit = voyageState.profit - spent;
+    this.targetProfit = kept;
     // Crown Compliance: a 0-100 score (drops only if the captain smuggled).
     this.targetCompliance = voyageState.crownCompliance;
 
@@ -197,10 +204,9 @@ export class VoyageSummarySystem extends createSystem({
       // who reaches this card has sold somewhere, so this is the "you did it!"
       // star that guarantees at least one bell ring.
       voyageState.soldVia !== "",
-      // Star 2: a REAL net gain - the sale brought in more coins than the whole
-      // trip cost. (profit here is the sale amount kept, so beating `spent`
-      // means the captain truly came out ahead.)
-      voyageState.profit > 0 && voyageState.profit > spent,
+      // Star 2: a REAL net gain - across the whole round trip the captain kept
+      // more coins than they spent.
+      kept > 0,
       // Star 3: a near-perfect record AND a sale at (or above) the hold's full
       // list value. Reachable legally - two won haggle pushes reach exactly
       // 100% of cargoValue with compliance still 100 - and by a lucky smuggler
@@ -260,7 +266,7 @@ export class VoyageSummarySystem extends createSystem({
     // --- The takeaway: the purse math, then the lesson -------------------------
     // Lead with the full "Earned - Spent = Kept" equation so the buying-margin
     // lesson is visible: profit is what is LEFT after the spending.
-    const purseLine = `Earned ${voyageState.profit} coins - Spent ${spent} coins = ${voyageState.profit - spent} coins kept.`;
+    const purseLine = `Earned ${earned} coins - Spent ${spent} coins = ${kept} coins kept.`;
     const lessonLine = voyageState.soldToSmuggler
       ? "You chased profit past the Crown's rules - selling to a smuggler for more coin while defying the Navigation Acts. That tension between profit and obedience was mercantilism."
       : "England's rules shaped your whole trip - what you carried, who you sold to, and who got rich. That is mercantilism.";
@@ -284,7 +290,13 @@ export class VoyageSummarySystem extends createSystem({
     // leave with concrete material for the written reflection. Lead with the hold
     // they loaded; if a decision left the log empty (shouldn't happen), fall back
     // to a gentle default so the box is never blank.
-    const log = voyageState.decisionsLog as string[];
+    const log = [...(voyageState.decisionsLog as string[])];
+    // The Leg 3 payoff, revealed here at home: what the English goods resold for.
+    if (voyageState.virginiaResaleGain > 0) {
+      log.push(
+        `Back home in Virginia, your English goods resold for ${voyageState.virginiaResaleGain} coins.`,
+      );
+    }
     const logText = log.length
       ? log.map((line) => `- ${line}`).join("\n")
       : "You completed your voyage across the Atlantic.";

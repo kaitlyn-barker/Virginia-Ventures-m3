@@ -1,0 +1,234 @@
+<!--
+  englandGoods.uikitml
+  --------------------------------------------------------------------------
+  The England "buy for the next leg" panel. After selling their raw colonial
+  goods, the captain spends the proceeds on English MANUFACTURED goods (iron
+  tools, cloth, furniture) to carry home and resell. Buying here is what makes
+  the trade a LOOP: colonial raw materials leave, finished goods made from them
+  come back - at England's price, both ways. That loop is mercantilism.
+
+  Markup + styles only. The behavior (what a good button or Sail Home does)
+  lives in src/englandGoods.ts, which finds these elements by id and wires them.
+
+  Same beginner rules as the other panels:
+    - <div> box, <span> text, <button> clickable. Sizes are in CENTIMETERS.
+    - Any text code fills in later starts with real placeholder text, never
+      empty (an empty element is trimmed and can't be filled).
+    - ASCII only (the panel font has no em-dash glyph).
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* ACCENT COLOR KEY (same on every panel): gold #c8962a = tap this,
+     green #9fd29f = good news, orange #e08a5a = risky / bad news. */
+
+  /* The whole panel: the same dark wooden card as the Virginia panel, so the
+     two "load a hold" screens read as a matched pair. */
+  .panel {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 84;
+    padding: 3;
+    background-color: #1a120b;
+    border-color: #c8962a;
+    border-width: 0.2;
+    border-radius: 2.5;
+  }
+
+  .ribbon {
+    font-size: 2.4;
+    font-weight: bold;
+    color: #e0b870;
+    text-align: left;
+  }
+
+  .title {
+    font-size: 5;
+    font-weight: bold;
+    color: #f3e9d2;
+    text-align: left;
+  }
+
+  .steps {
+    display: flex;
+    flex-direction: row;
+    margin-top: 1;
+    margin-bottom: 1.5;
+  }
+  .step {
+    width: 12.5;
+    padding: 0.6;
+    margin-right: 0.5;
+    font-size: 2;
+    text-align: center;
+    border-radius: 1;
+    background-color: #241a10;
+    color: #8a7860;
+  }
+  .step-now {
+    background-color: #c8962a;
+    color: #1a120b;
+    font-weight: bold;
+  }
+
+  .subtitle {
+    font-size: 2.6;
+    color: #c9b896;
+    text-align: left;
+    margin-top: 0.4;
+  }
+
+  /* The one-line teaching point: the mercantile loop, in plain kid words. */
+  .lesson {
+    font-size: 2.4;
+    color: #9fd29f;
+    text-align: left;
+    margin-top: 0.8;
+    line-height: 1.3;
+  }
+
+  .section-label {
+    font-size: 2.6;
+    font-weight: medium;
+    color: #c8962a;
+    text-align: left;
+    margin-top: 2.4;
+    margin-bottom: 1;
+  }
+
+  .goods-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .good-btn {
+    width: 24;
+    margin-right: 1.5;
+    padding: 1.6;
+    background-color: #2f3a44;
+    color: #f3e9d2;
+    border-color: #c8962a;
+    border-width: 0.12;
+    border-radius: 1.4;
+    font-size: 2.6;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  .hold-row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .slot {
+    width: 11.5;
+    height: 9;
+    margin-right: 1.2;
+    padding: 0.6;
+    background-color: #2a1e14;
+    color: #8a7860;
+    border-color: #4a3a28;
+    border-width: 0.12;
+    border-radius: 1;
+    font-size: 2;
+    font-weight: medium;
+    text-align: center;
+  }
+
+  .purse-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2;
+    padding: 1.2;
+    background-color: #241a10;
+    border-radius: 1.2;
+  }
+  .purse-label {
+    font-size: 2.4;
+    color: #c9b896;
+  }
+  .purse-value {
+    font-size: 2.8;
+    font-weight: bold;
+    color: #e0b870;
+  }
+
+  .message {
+    font-size: 3;
+    font-weight: bold;
+    color: #e0b870;
+    text-align: center;
+    margin-top: 2.2;
+    padding: 1.4;
+    border-radius: 1.2;
+    background-color: #241a10;
+  }
+
+  /* Sail Home: buying is OPTIONAL, so this button ships READY (gold). Code
+     keeps it gold and just updates the count of goods bought. */
+  #sail-home {
+    margin-top: 1.6;
+    padding: 2;
+    background-color: #c8962a;
+    color: #1a120b;
+    border-color: #9a6a12;
+    border-width: 0.12;
+    border-radius: 1.5;
+    font-size: 3;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="panel">
+  <span class="ribbon">THE CROWN'S MARKET</span>
+  <span class="title">Buy English Goods</span>
+  <div class="steps">
+    <span class="step">1 Load</span>
+    <span class="step">2 Storm</span>
+    <span class="step">3 Sell</span>
+    <span class="step step-now">4 Deal</span>
+    <span class="step">5 Map</span>
+    <span class="step">6 Score</span>
+  </div>
+  <span class="subtitle">Spend your sale coins on English goods to sell back home.</span>
+  <span class="lesson">These are made from colonial raw materials, then sold back to colonists at England's price. That loop is mercantilism.</span>
+
+  <!-- The three manufactured goods. The "- N slots - N coins" half of each
+       label is written in by code from ENGLAND_GOODS_SLOTS / ENGLAND_GOODS_PRICE
+       so it can never drift from the real numbers. -->
+  <span class="section-label">English Goods</span>
+  <div class="goods-row">
+    <button id="buy-tools" class="good-btn">Iron Tools</button>
+    <button id="buy-cloth" class="good-btn">Cloth</button>
+    <button id="buy-furniture" class="good-btn">Furniture</button>
+  </div>
+
+  <!-- The fresh 6-slot hold for the trip home. -->
+  <span class="section-label">Cargo Hold</span>
+  <div class="hold-row">
+    <button id="slot-1" class="slot">open</button>
+    <button id="slot-2" class="slot">open</button>
+    <button id="slot-3" class="slot">open</button>
+    <button id="slot-4" class="slot">open</button>
+    <button id="slot-5" class="slot">open</button>
+    <button id="slot-6" class="slot">open</button>
+  </div>
+
+  <!-- The purse row: how many coins the captain has LEFT to spend. -->
+  <div class="purse-row">
+    <span class="purse-label">Coins to spend</span>
+    <span id="purse" class="purse-value">0 coins</span>
+  </div>
+
+  <!-- The outcome banner + the Sail Home button (buying is optional, so it is
+       ready from the start). -->
+  <span id="message" class="message">Buy goods to sell at home, or just sail home.</span>
+  <button id="sail-home">Sail Home</button>
+</div>
