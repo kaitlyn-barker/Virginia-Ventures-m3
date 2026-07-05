@@ -273,8 +273,3 @@ export function ratedEfficiency() {
     EFFICIENCY_BANDS[EFFICIENCY_BANDS.length - 1];
   return { stars: band.stars, label: band.label, seconds };
 }
-
-// Log the whole logbook on load so you can confirm in the browser console that the
-// new gamification fields show up alongside the original ones. (index.ts also logs
-// the state when the world starts; this one fires the moment this module loads.)
-console.log("Captain's Voyage — voyageState on load:", voyageState);

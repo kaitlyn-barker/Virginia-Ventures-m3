@@ -6,6 +6,10 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Archive / packaging artifacts (never commit these)
+*.zip
+__MACOSX/
+
 # Environment files
 .env
 .env.local

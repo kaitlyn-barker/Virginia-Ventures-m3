@@ -50,14 +50,9 @@ import { registerVirginiaPhase } from "./voyagePhases.js";
 import { showWelcome } from "./welcomePanel.js";
 import { showTutorial, TUTORIALS } from "./tutorial.js";
 
-// The voyage's "logbook" — a single data object holding the state of the trip —
-// plus startTiming(), which starts the Voyage Efficiency stopwatch the moment the
-// first real decision (loading cargo) is put in front of the student.
-import { voyageState, startTiming } from "./voyageState.js";
-
-// Print the starting state to the browser console on load. Open the browser's
-// DevTools console to confirm you see this object when the app starts.
-console.log("Captain's Voyage — initial voyageState:", voyageState);
+// startTiming() starts the Voyage Efficiency stopwatch the moment the first real
+// decision (loading cargo) is put in front of the student.
+import { startTiming } from "./voyageState.js";
 
 World.create(document.getElementById("scene-container") as HTMLDivElement, {
   render: {
