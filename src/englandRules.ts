@@ -236,10 +236,22 @@ export class EnglandRulesSystem extends createSystem({
         return;
       }
 
-      // Success: the offer climbs by 10% of base.
-      currentOffer += Math.round(base * HAGGLE_PUSH_GAIN_PCT);
+      // Success: the offer climbs by 10% of base - but NEVER above `base`, the
+      // hold's list value. England sets the price; the best a captain can do is
+      // haggle UP TO it, never past it. That clamp is the whole mercantilism
+      // lesson, so when the student reaches the ceiling we name it.
+      currentOffer = Math.min(base, currentOffer + Math.round(base * HAGGLE_PUSH_GAIN_PCT));
+      const atCeiling = currentOffer >= base;
 
-      if (pushesUsed >= HAGGLE_MAX_ROUNDS) {
+      if (atCeiling) {
+        // Reached the most England will pay: no more pushing, and the lesson lands.
+        pushingClosed = true;
+        paintButtons();
+        saleMessage?.setProperties({
+          text: `The merchant comes up to ${currentOffer} coins - the most England will pay. Even your best deal is England's price. That is mercantilism. Tap Accept to settle.`,
+          color: "#9fd29f",
+        });
+      } else if (pushesUsed >= HAGGLE_MAX_ROUNDS) {
         // Out of rounds: this is England's final offer now.
         pushingClosed = true;
         paintButtons();

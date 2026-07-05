@@ -221,8 +221,11 @@ export class VoyageSummarySystem extends createSystem({
     // and how hard they haggled. "Master Trader" is the TOP rank: a perfect
     // record AND a price pushed past the hold's full list value (three won
     // haggle pushes reach 110% of base, so any hold worth 100+ coins can do it).
-    const STRONG_HAGGLE_RATIO = 1.0; // profit >= ratio * cargoValue => "strong"
-    const MASTER_TRADER_MARGIN = 10; // coins ABOVE list value for the top rank
+    // Haggling is now clamped to England's list value (you can reach the full
+    // price, never beat it - that IS mercantilism), so the top legal rank is
+    // "you got England's full price", and a strong haggle is most of the way
+    // there.
+    const STRONG_HAGGLE_RATIO = 0.9; // profit >= 90% of cargoValue => "strong"
     const rankEl = doc.getElementById("rank") as UIKit.Text | null;
     const rankDescEl = doc.getElementById("rank-desc") as UIKit.Text | null;
 
@@ -239,12 +242,13 @@ export class VoyageSummarySystem extends createSystem({
       }
     } else if (
       voyageState.crownCompliance === 100 &&
-      voyageState.profit >= voyageState.cargoValue + MASTER_TRADER_MARGIN
+      voyageState.profit >= voyageState.cargoValue
     ) {
-      // The top rank: perfect record AND a price beyond the full list value.
+      // The top legal rank: perfect record AND haggled all the way to England's
+      // full list price (the ceiling - you cannot legally beat it).
       rankName = "Master Trader";
       rankDesc =
-        "Perfect record AND a price above full value. The best rank there is!";
+        "Perfect record AND you haggled to England's full price. The best a loyal captain can do!";
     } else {
       // Legal sale to England (Crown Compliance stays at 100). A strong haggle
       // earns the shrewder rank; otherwise the loyal one.
