@@ -67,9 +67,9 @@
   }
 
   .step {
-    width: 15;
+    width: 13.5;
     padding: 0.6;
-    margin-right: 1;
+    margin-right: 0.6;
     font-size: 2;
     text-align: center;
     border-radius: 1;
@@ -275,14 +275,15 @@
 <div class="card">
   <span class="title">Voyage Summary</span>
 
-  <!-- The step tracker, lit on the final chip: 6 Score. -->
+  <!-- The step tracker, lit on the final chip: 7 Score. -->
   <div class="steps">
     <span class="step">1 Load</span>
     <span class="step">2 Storm</span>
     <span class="step">3 Sell</span>
     <span class="step">4 Deal</span>
-    <span class="step">5 Map</span>
-    <span class="step step-now">6 Score</span>
+    <span class="step">5 Buy</span>
+    <span class="step">6 Map</span>
+    <span class="step step-now">7 Score</span>
   </div>
 
   <!-- Every captain gets a cheer before the numbers. -->

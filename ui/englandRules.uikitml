@@ -68,9 +68,9 @@
     margin-bottom: 1.5;
   }
   .step {
-    width: 15;
+    width: 12.5;
     padding: 0.6;
-    margin-right: 1;
+    margin-right: 0.7;
     font-size: 2;
     text-align: center;
     border-radius: 1;
@@ -184,15 +184,16 @@
   <span class="ribbon">PORT OF ENGLAND</span>
   <span class="title">England</span>
 
-  <!-- The voyage step tracker: this card is step 3 of 6, so "3 Sell" is the
+  <!-- The voyage step tracker: this card is step 3 of 7, so "3 Sell" is the
        gold chip. The chips are decoration only - no code touches them. -->
   <div class="steps">
     <span class="step">1 Load</span>
     <span class="step">2 Storm</span>
     <span class="step step-now">3 Sell</span>
     <span class="step">4 Deal</span>
-    <span class="step">5 Map</span>
-    <span class="step">6 Score</span>
+    <span class="step">5 Buy</span>
+    <span class="step">6 Map</span>
+    <span class="step">7 Score</span>
   </div>
 
   <span class="subtitle">You have made port. The Crown's customs house is waiting.</span>

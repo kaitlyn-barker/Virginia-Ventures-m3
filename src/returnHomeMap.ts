@@ -13,12 +13,9 @@
 // no imported art. That keeps it tiny and fast, and the flat "chart" look suits
 // the colonial theme better than a photographic map would.
 //
-// Two teaching rules drive the design:
-//   1. Draw the FULL triangle in gold so students see the whole trade system.
-//   2. Only ANIMATE the marker on the legs the student really sailed. The third
-//      leg (West Africa -> Virginia) - and the England -> West Africa leg that
-//      completes the triangle - are drawn DIMMER and DASHED, so the full system
-//      is visible without ever implying the student sailed those waters.
+// Teaching design: the student now travels the WHOLE triangle (Virginia ->
+// England -> West Africa -> Virginia), so all three legs are drawn solid and
+// bright and the marker sails every one of them, tracing the full trade system.
 //
 // When the little ship finishes its voyage home, the map sets the voyage's
 // `currentLeg` to "summary" and hands off to the Voyage Summary screen.
@@ -78,6 +75,7 @@ export const RouteMarker = createComponent("RouteMarker", {
   elapsed: { type: Types.Float32, default: 0 },
   done: { type: Types.Boolean, default: false },
   rangEngland: { type: Types.Boolean, default: false },
+  rangWestAfrica: { type: Types.Boolean, default: false },
   rangHome: { type: Types.Boolean, default: false },
 });
 
@@ -108,13 +106,18 @@ const Z_PORT = 0.02; // the port dots
 const Z_MARKER = 0.026; // the ship marker - closest to the viewer
 const Z_LABEL = 0.035; // text labels - in front of everything
 
-// Marker animation timing (seconds). A short pause at each end lets the student
-// read where the ship is before it moves.
-const T_START = 0.8; // hold at Virginia before departing
-const T_LEG = 3.2; // seconds to sail one leg
-const T_HOLD = 0.8; // pause at England before the return
-const T_END = T_START + T_LEG + T_HOLD + T_LEG; // total run time
-const T_ARRIVE_ENGLAND = T_START + T_LEG; // the moment the marker docks in England
+// Marker animation timing (seconds). A short pause at each port lets the student
+// read where the ship is before it moves. The full triangle is three legs
+// (Virginia -> England -> West Africa -> Virginia) with a hold at England and at
+// West Africa between them.
+const T_START = 0.7; // hold at Virginia before departing
+const T_LEG = 2.6; // seconds to sail one leg of the triangle
+const T_HOLD = 0.7; // pause at each port before sailing the next leg
+const T_ARRIVE_ENGLAND = T_START + T_LEG; // dock in England
+const T_DEPART_ENGLAND = T_ARRIVE_ENGLAND + T_HOLD; // leave England
+const T_ARRIVE_AFRICA = T_DEPART_ENGLAND + T_LEG; // reach West Africa
+const T_DEPART_AFRICA = T_ARRIVE_AFRICA + T_HOLD; // leave West Africa
+const T_END = T_DEPART_AFRICA + T_LEG; // arrive home in Virginia
 
 // The golden WAKE TRAIL the ship bead leaves behind it. The trail is a small
 // POOL of dash meshes built once up front (never created mid-animation): every
@@ -123,7 +126,7 @@ const T_ARRIVE_ENGLAND = T_START + T_LEG; // the moment the marker docks in Engl
 // pool runs out we wrap around and reuse the OLDEST dash - on the return leg
 // that makes the trail overdraw the outbound one, which reads exactly right:
 // "sailing home the same way we came".
-const TRAIL_COUNT = 26; // dashes in the pool (enough for both legs)
+const TRAIL_COUNT = 48; // dashes in the pool (enough for all three legs)
 const TRAIL_SPACING_S = 0.18; // seconds of travel between dropped dashes
 const Z_TRAIL = Z_SOLID + 0.001; // just in front of the solid sailed leg
 
@@ -144,11 +147,6 @@ let routeMapGroup: Entity | null = null;
 // ----------------------------------------------------------------------------
 const paperMat = new MeshBasicMaterial({ color: PALETTE.CREAM });
 const goldMat = new MeshBasicMaterial({ color: PALETTE.GOLD }); // bright sailed leg
-const goldDimMat = new MeshBasicMaterial({
-  color: PALETTE.GOLD,
-  transparent: true,
-  opacity: 0.4, // the un-sailed legs: same gold, faded back
-});
 const portMat = new MeshBasicMaterial({ color: PALETTE.GOLD }); // the three port dots
 const shipMat = new MeshBasicMaterial({ color: PALETTE.SHIP_WOOD }); // dark ship bead
 const trailMat = new MeshBasicMaterial({
@@ -196,31 +194,6 @@ function addSolidEdge(world: World, group: Entity, a: Vector3, b: Vector3): void
   const length = Math.hypot(dx, dy);
   const angle = Math.atan2(dy, dx);
   addBar(world, group, goldMat, (a.x + b.x) / 2, (a.y + b.y) / 2, Z_SOLID, length, 0.014, angle);
-}
-
-/**
- * addDashedEdge - draw a dashed, faded line between two chart points. Used for
- * the legs of the triangle the student did NOT sail, so the whole system shows
- * without implying travel. We lay a row of short gold dashes with gaps between.
- */
-function addDashedEdge(world: World, group: Entity, a: Vector3, b: Vector3): void {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  const length = Math.hypot(dx, dy);
-  const angle = Math.atan2(dy, dx);
-
-  const dashLen = 0.05; // length of one dash
-  const gap = 0.035; // empty space after each dash
-  const step = dashLen + gap; // dash-to-dash spacing along the line
-
-  // Walk from one end to the other, dropping a dash each `step` until we'd run
-  // past the far point.
-  for (let d = dashLen / 2; d + dashLen / 2 <= length; d += step) {
-    const t = d / length; // 0..1 along the edge
-    const cx = a.x + dx * t;
-    const cy = a.y + dy * t;
-    addBar(world, group, goldDimMat, cx, cy, Z_DASH, dashLen, 0.01, angle);
-  }
 }
 
 /** addPort - a small filled gold circle (sphere) marking one port. */
@@ -277,12 +250,12 @@ export function createRouteMap(world: World): Entity {
   world.createTransformEntity(paper, { parent: group });
 
   // --- The triangle's three edges -------------------------------------------
-  // SAILED leg (solid, bright): Virginia <-> England. The marker rides this one.
+  // All three legs are SAILED now, so all three are solid and bright: the marker
+  // rides Virginia -> England -> West Africa -> Virginia, tracing the whole
+  // triangular trade the student travelled.
   addSolidEdge(world, group, VIRGINIA, ENGLAND);
-  // UN-SAILED legs (dashed, faded) complete the triangle: England -> West Africa
-  // and the "third leg" West Africa -> Virginia.
-  addDashedEdge(world, group, ENGLAND, WEST_AFRICA);
-  addDashedEdge(world, group, WEST_AFRICA, VIRGINIA);
+  addSolidEdge(world, group, ENGLAND, WEST_AFRICA);
+  addSolidEdge(world, group, WEST_AFRICA, VIRGINIA);
 
   // --- The three ports -------------------------------------------------------
   addPort(world, group, VIRGINIA);
@@ -298,14 +271,13 @@ export function createRouteMap(world: World): Entity {
   // Build every wake dash NOW, so the animation never has to create anything.
   // Each dash starts at scale 0 (invisible); the system pops them to scale 1
   // one by one as the ship sails. They all share one geometry and one material,
-  // and they all lie along the Virginia <-> England line - both sailed legs run
-  // on that same line, so a single fixed angle keeps the wake looking drawn-in.
-  const wakeAngle = Math.atan2(ENGLAND.y - VIRGINIA.y, ENGLAND.x - VIRGINIA.x);
+  // The three legs run at different angles, so each dash is turned to its leg's
+  // direction at the moment it's revealed (see legAngleAt in the system); here we
+  // just build the pool, all hidden, parked at Virginia.
   trailDashes = [];
   for (let i = 0; i < TRAIL_COUNT; i++) {
     const dash = new Mesh(trailGeometry, trailMat);
     dash.position.set(VIRGINIA.x, VIRGINIA.y, Z_TRAIL);
-    dash.rotation.z = wakeAngle;
     dash.scale.setScalar(0); // hidden until the ship sails past this spot
     world.createTransformEntity(dash, { parent: group });
     trailDashes.push(dash);
@@ -319,7 +291,7 @@ export function createRouteMap(world: World): Entity {
   addLabel(world, group, "England", 0.3, 0.35); // up-right of the top port dot
   addLabel(world, group, "Virginia", -0.52, -0.46); // below the lower-left port
   addLabel(world, group, "West Africa", 0.52, -0.46, 0.6); // below the lower-right port
-  addLabel(world, group, "the third leg of the triangle", 0.0, -0.41, 0.85, 0.16); // dashed base
+  addLabel(world, group, "you sailed all three legs", 0.0, -0.41, 0.85, 0.16); // base caption
 
   routeMapGroup = group;
   return group;
@@ -382,22 +354,24 @@ export class RouteMapSystem extends createSystem({
       entity.object3D!.position.set(pos.x, pos.y, Z_MARKER);
 
       // --- Drop wake dashes while the ship is actually SAILING ---------------
-      // The ship moves during two windows: Virginia -> England, and England ->
-      // home. During the holds at each port it sits still, so we don't count
-      // that time - a wake only forms behind a moving ship. Every 0.18s of
-      // travel we move the next POOLED dash (never a new one) to the bead's
-      // current spot and pop it visible. The while-loop catches up cleanly if
-      // one clamped frame spans more than one spacing.
-      const departEngland = T_ARRIVE_ENGLAND + T_HOLD;
+      // The ship moves during three windows, one per leg of the triangle. During
+      // the holds at each port it sits still, so a wake only forms while it's
+      // under way. Every 0.18s of travel we move the next POOLED dash (never a
+      // new one) to the bead's current spot, turn it to the current leg's
+      // heading, and pop it visible. The while-loop catches up cleanly if one
+      // clamped frame spans more than one spacing.
       const sailing =
         (elapsed > T_START && elapsed < T_ARRIVE_ENGLAND) ||
-        (elapsed > departEngland && elapsed < T_END);
+        (elapsed > T_DEPART_ENGLAND && elapsed < T_ARRIVE_AFRICA) ||
+        (elapsed > T_DEPART_AFRICA && elapsed < T_END);
       if (sailing && trailDashes.length > 0) {
         this.trailAccum += step;
+        const legAngle = this.legAngleAt(elapsed);
         while (this.trailAccum >= TRAIL_SPACING_S) {
           this.trailAccum -= TRAIL_SPACING_S;
           const dash = trailDashes[this.trailIndex];
           dash.position.set(pos.x, pos.y, Z_TRAIL);
+          dash.rotation.z = legAngle; // turn the dash to this leg's heading
           dash.scale.setScalar(1); // reveal it (pooled meshes start at scale 0)
           this.trailIndex = (this.trailIndex + 1) % trailDashes.length;
         }
@@ -409,6 +383,12 @@ export class RouteMapSystem extends createSystem({
       // bell can only ring on the single frame its moment first passes.
       if (elapsed >= T_ARRIVE_ENGLAND && !entity.getValue(RouteMarker, "rangEngland")) {
         entity.setValue(RouteMarker, "rangEngland", true);
+        ringShipBell(1);
+      }
+
+      // A second ding when the ship reaches West Africa (the triangle's turn).
+      if (elapsed >= T_ARRIVE_AFRICA && !entity.getValue(RouteMarker, "rangWestAfrica")) {
+        entity.setValue(RouteMarker, "rangWestAfrica", true);
         ringShipBell(1);
       }
 
@@ -426,20 +406,34 @@ export class RouteMapSystem extends createSystem({
 
   /**
    * positionAt - the marker's chart position at a given elapsed time. The route
-   * is: hold at Virginia, sail to England, hold, sail back toward Virginia.
-   * We reuse the module's VIRGINIA/ENGLAND points and a smooth ease so the ship
-   * glides rather than jerks. Returns ENGLAND/VIRGINIA directly during holds.
+   * is the full triangle: hold at Virginia, sail to England, hold, sail to West
+   * Africa, hold, sail home to Virginia. A smooth ease makes the ship glide
+   * rather than jerk. Returns a port point directly during its hold.
    */
   private positionAt(t: number): Vector3 {
-    const t1 = T_START; // depart Virginia
-    const t2 = T_START + T_LEG; // arrive England
-    const t3 = t2 + T_HOLD; // depart England
-
-    if (t <= t1) return VIRGINIA; // waiting at Virginia
-    if (t <= t2) return this.lerp(VIRGINIA, ENGLAND, this.ease((t - t1) / T_LEG));
-    if (t <= t3) return ENGLAND; // pausing at England
-    if (t <= T_END) return this.lerp(ENGLAND, VIRGINIA, this.ease((t - t3) / T_LEG));
+    if (t <= T_START) return VIRGINIA; // waiting at Virginia
+    if (t <= T_ARRIVE_ENGLAND)
+      return this.lerp(VIRGINIA, ENGLAND, this.ease((t - T_START) / T_LEG));
+    if (t <= T_DEPART_ENGLAND) return ENGLAND; // pausing at England
+    if (t <= T_ARRIVE_AFRICA)
+      return this.lerp(ENGLAND, WEST_AFRICA, this.ease((t - T_DEPART_ENGLAND) / T_LEG));
+    if (t <= T_DEPART_AFRICA) return WEST_AFRICA; // pausing at West Africa
+    if (t <= T_END)
+      return this.lerp(WEST_AFRICA, VIRGINIA, this.ease((t - T_DEPART_AFRICA) / T_LEG));
     return VIRGINIA; // arrived home
+  }
+
+  /**
+   * legAngleAt - the heading (radians) of whichever leg the ship is sailing at
+   * time t, so the wake dashes lie along the current leg. During a hold it
+   * returns the leg the ship is about to sail; the wake only drops while moving.
+   */
+  private legAngleAt(t: number): number {
+    if (t <= T_ARRIVE_ENGLAND)
+      return Math.atan2(ENGLAND.y - VIRGINIA.y, ENGLAND.x - VIRGINIA.x);
+    if (t <= T_ARRIVE_AFRICA)
+      return Math.atan2(WEST_AFRICA.y - ENGLAND.y, WEST_AFRICA.x - ENGLAND.x);
+    return Math.atan2(VIRGINIA.y - WEST_AFRICA.y, VIRGINIA.x - WEST_AFRICA.x);
   }
 
   /** smoothstep easing: 0..1 in, eased 0..1 out (gentle start and stop). */

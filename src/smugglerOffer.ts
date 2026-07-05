@@ -58,10 +58,12 @@ import {
   markPhase,
 } from "./voyageState.js";
 
-// The next screens: first the England "buy for the next leg" step (the second
-// half of the mercantile loop), then the existing animated route map home.
+// The next screens, in order: the England "buy for the next leg" step (the
+// second half of the mercantile loop), then the West Africa reflection (the
+// second side of the triangle), then the existing animated route map home.
 import { beginReturnHomeMap } from "./returnHomeMap.js";
 import { beginEnglandGoodsBuy } from "./englandGoods.js";
+import { beginWestAfricaLeg } from "./westAfricaLeg.js";
 
 // The reusable tutorial coach: a short teaching card gates the smuggler's offer.
 import { showTutorial, TUTORIALS } from "./tutorial.js";
@@ -395,9 +397,11 @@ export class SmugglerOfferSystem extends createSystem({
       }
       entity.dispose();
 
-      // The mercantile loop's second half: spend the proceeds on English goods,
-      // then hand off to the EXISTING route map home.
-      beginEnglandGoodsBuy(world, () => beginReturnHomeMap(world));
+      // The rest of the triangle: buy English goods, then witness the West
+      // Africa leg (no gameplay), then sail home on the EXISTING route map.
+      beginEnglandGoodsBuy(world, () =>
+        beginWestAfricaLeg(world, () => beginReturnHomeMap(world)),
+      );
     }, 0);
   }
 }

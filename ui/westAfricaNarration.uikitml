@@ -1,0 +1,96 @@
+<!--
+  westAfricaNarration.uikitml
+  --------------------------------------------------------------------------
+  The WEST AFRICA leg of the triangle. This is NOT gameplay: no trading, no
+  cargo, no coins, no score. The ship lies at anchor offshore at dusk and the
+  student reads a short sequence of narration cards, advancing each at their
+  own pace. The history is carried by text alone - we never depict suffering.
+
+  On purpose this panel looks NOTHING like the trading cards: a muted deep
+  indigo/slate palette instead of the tavern browns, NO glowing gold step
+  chips, and a quiet slate "Continue" button (never the gold "fun tap" color).
+  That visual break tells the student this moment is different and serious.
+
+  All the words (title, body, button, progress) are written in at runtime from
+  the narration script in src/westAfricaLeg.ts, so each starts with a non-empty
+  placeholder. ASCII only (the panel font has no em-dash glyph).
+  --------------------------------------------------------------------------
+-->
+<style>
+  /* The whole card: deep indigo, a quiet slate border, no gilt. */
+  .card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 92;
+    padding: 5;
+    background-color: #171d2b; /* deep indigo dusk */
+    border-color: #3a4560; /* muted slate rim (no gold anywhere) */
+    border-width: 0.18;
+    border-radius: 2.5;
+  }
+
+  /* The small place line above the title - slate, not gold. */
+  .eyebrow {
+    font-size: 2.4;
+    font-weight: medium;
+    color: #8b97b3; /* muted slate-blue */
+    text-align: left;
+    margin-bottom: 1;
+  }
+
+  /* The card's heading - soft off-white, quiet weight. */
+  .title {
+    font-size: 4.6;
+    font-weight: bold;
+    color: #dbe2f0;
+    text-align: left;
+    margin-bottom: 2;
+  }
+
+  /* The narration paragraph - the whole point of this screen. Roomy line
+     height, gentle color, one idea per card. */
+  .body {
+    font-size: 3.4;
+    color: #c3ccde;
+    text-align: left;
+    line-height: 1.5;
+    margin-bottom: 3;
+  }
+
+  /* A very quiet progress line ("Card 1 of 5") so the reader can pace
+     themselves. Deliberately dim - it must not read as a game score. */
+  .progress {
+    font-size: 2.2;
+    color: #67728c;
+    text-align: left;
+    margin-bottom: 2.5;
+  }
+
+  /* The Continue button: a calm slate bar with light ink. NOT gold - the gold
+     "tap for a reward" language never appears on this leg. No flash in code. */
+  #wa-continue {
+    align-self: flex-start;
+    padding-top: 2.2;
+    padding-bottom: 2.2;
+    padding-left: 5;
+    padding-right: 5;
+    background-color: #34405c; /* calm slate */
+    color: #dbe2f0;
+    border-color: #4a577a;
+    border-width: 0.14;
+    border-radius: 1.6;
+    font-size: 3.2;
+    font-weight: medium;
+    text-align: center;
+    cursor: pointer;
+  }
+</style>
+
+<div class="card">
+  <span class="eyebrow">WEST AFRICA - THE THIRD SIDE OF THE TRIANGLE</span>
+  <span id="wa-title" class="title">The Ship Drops Anchor</span>
+  <span id="wa-body" class="body">Your ship reaches the coast of West Africa at dusk.</span>
+  <span id="wa-progress" class="progress">Card 1</span>
+  <button id="wa-continue">Continue</button>
+</div>

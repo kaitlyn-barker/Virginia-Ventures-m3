@@ -65,9 +65,9 @@
     margin-bottom: 1.5;
   }
   .step {
-    width: 12.5;
+    width: 10.5;
     padding: 0.6;
-    margin-right: 0.5;
+    margin-right: 0.4;
     font-size: 2;
     text-align: center;
     border-radius: 1;
@@ -210,8 +210,9 @@
     <span class="step">2 Storm</span>
     <span class="step">3 Sell</span>
     <span class="step">4 Deal</span>
-    <span class="step">5 Map</span>
-    <span class="step">6 Score</span>
+    <span class="step">5 Buy</span>
+    <span class="step">6 Map</span>
+    <span class="step">7 Score</span>
   </div>
   <span class="subtitle">Buy goods with your coins. Your hold has 6 slots. Then set sail!</span>
 

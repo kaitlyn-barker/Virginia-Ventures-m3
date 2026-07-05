@@ -226,7 +226,8 @@ export class EnglandGoodsSystem extends createSystem({
         decisions.push("You sailed home from England carrying no goods to resell.");
       }
 
-      voyageState.currentLeg = "leg3";
+      // Depart England for the West Africa leg (which sets its own leg values).
+      voyageState.currentLeg = "leg2";
       refreshHud();
       console.log(
         "Captain's Voyage - bought English goods:",

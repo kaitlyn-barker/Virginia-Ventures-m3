@@ -71,9 +71,9 @@
   }
 
   .step {
-    width: 15;
+    width: 12.5;
     padding: 0.6;
-    margin-right: 1;
+    margin-right: 0.7;
     font-size: 2.0;
     text-align: center;
     border-radius: 1;
@@ -198,14 +198,15 @@
   <span class="ribbon">OPEN OCEAN</span>
   <span class="title">Storm at Sea</span>
 
-  <!-- The step tracker: you are on step 2 of 6 (the gold chip). -->
+  <!-- The step tracker: you are on step 2 of 7 (the gold chip). -->
   <div class="steps">
     <span class="step">1 Load</span>
     <span class="step step-now">2 Storm</span>
     <span class="step">3 Sell</span>
     <span class="step">4 Deal</span>
-    <span class="step">5 Map</span>
-    <span class="step">6 Score</span>
+    <span class="step">5 Buy</span>
+    <span class="step">6 Map</span>
+    <span class="step">7 Score</span>
   </div>
 
   <span class="subtitle">Mid-Atlantic, the sky turns black and the swell rises.</span>

@@ -103,11 +103,19 @@ export function refreshHud(): void {
     const left = Math.max(0, voyageState.profit - voyageState.englandPurchaseCost);
     els.coins.setProperties({ text: `${left} coins left` });
   } else {
-    // Cargo: how many of the six slots are full right now.
-    const slotsUsed = (voyageState.cargoLoaded as string[]).reduce(
-      (n, good) => n + ((GOOD_SLOTS as Record<string, number>)[good] ?? 1),
-      0,
-    );
+    // Cargo: how many of the six slots are full right now. Once the captain has
+    // bought English goods to carry home, the ledger tracks THAT hold; before
+    // then it tracks the Virginia raw goods.
+    const carryingEnglish = (voyageState.goodsBoughtInEngland as string[]).length > 0;
+    const slotsUsed = carryingEnglish
+      ? (voyageState.goodsBoughtInEngland as string[]).reduce(
+          (n, good) => n + ((ENGLAND_GOODS_SLOTS as Record<string, number>)[good] ?? 1),
+          0,
+        )
+      : (voyageState.cargoLoaded as string[]).reduce(
+          (n, good) => n + ((GOOD_SLOTS as Record<string, number>)[good] ?? 1),
+          0,
+        );
     els.cargo.setProperties({
       text: `${slotsUsed} / ${voyageState.cargoSlotsTotal} slots`,
     });

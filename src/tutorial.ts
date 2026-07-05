@@ -40,7 +40,7 @@ import { juiceButton } from "./uiFx";
 /** One section's coach-card text. Every field is plain ASCII (the panel font has
  *  no em-dash glyph), and all of it is filled into the reusable card at runtime. */
 export interface TutorialContent {
-  eyebrow: string; // the small gold step-tracker line ("STEP 2 OF 6 - ...")
+  eyebrow: string; // the small gold step-tracker line ("STEP 2 OF 7 - ...")
   title: string; //  the card's heading
   body: string; //   the teaching paragraph (the history/economics of this leg)
   task: string; //   the "What to do" call-to-action
@@ -50,42 +50,42 @@ export interface TutorialContent {
 // The teaching script, one entry per leg. Each body connects to the instructional
 // content of the section it introduces, so the tutorial and the activity teach the
 // same idea. Written for 5th graders: short sentences, big words defined right
-// where they appear. The eyebrow doubles as a voyage step tracker ("STEP 2 OF 6")
+// where they appear. The eyebrow doubles as a voyage step tracker ("STEP 2 OF 7")
 // so students always know how far along they are. ASCII-only, like every panel.
 export const TUTORIALS: Record<string, TutorialContent> = {
   virginia: {
-    eyebrow: "STEP 1 OF 6 - VIRGINIA PORT",
+    eyebrow: "STEP 1 OF 7 - VIRGINIA PORT",
     title: "Load Your Hold",
     body: "England wants raw goods from its colonies. That rule is called mercantilism. It means the colony's job is to make England rich. Your ship has 6 cargo slots. Big goods take more slots.",
     task: "What to do: Tap a good to load it into the hold. Fill it, then tap Set Sail.",
     button: "Got it - load my hold",
   },
   storm: {
-    eyebrow: "STEP 2 OF 6 - STORM AT SEA",
+    eyebrow: "STEP 2 OF 7 - STORM AT SEA",
     title: "A Choice in the Swell",
     body: "Storms made ocean crossings dangerous. You must choose. Toss your heaviest crate to stay safe, or hold on and hope. Holding on is a gamble - 4 out of 10 ships take damage.",
     task: "What to do: Pick a course, then tap Continue.",
     button: "Got it - face the storm",
   },
   england: {
-    eyebrow: "STEP 3 OF 6 - ENGLAND",
+    eyebrow: "STEP 3 OF 7 - ENGLAND",
     title: "The Crown's Market",
     body: "England has trade laws called the Navigation Acts. Colonists may only sell to England. England names the price - not you. But a clever captain can haggle for more.",
     task: "What to do: Push for more or Accept a price, then tap Continue.",
     button: "Got it - meet the merchant",
   },
   smuggler: {
-    eyebrow: "STEP 4 OF 6 - A SHADY OFFER",
+    eyebrow: "STEP 4 OF 7 - A SHADY OFFER",
     title: "Loyalty or Profit?",
     body: "A smuggler offers MORE coins than England. But selling to him breaks the law. If customs catch you, they seize your cargo. Safe and legal, or risky and rich?",
     task: "What to do: Choose your buyer, then tap Continue.",
     button: "Got it - weigh the offer",
   },
   map: {
-    eyebrow: "STEP 5 OF 6 - THE VOYAGE HOME",
+    eyebrow: "STEP 6 OF 7 - THE VOYAGE HOME",
     title: "The Triangular Trade",
-    body: "Your trip was one side of a triangle. Ships moved goods between England, the colonies, and West Africa. This trade also carried enslaved people - a cruel part of history. Watch your ship sail home.",
-    task: "What to do: Watch the chart sail home - your voyage summary follows.",
+    body: "You sailed the whole triangle: Virginia, England, and West Africa. This trade tied three places together - and, as you saw, it carried enslaved people too. Watch your ship trace the route home.",
+    task: "What to do: Watch the chart sail all three legs - your voyage summary follows.",
     button: "Got it - chart the course",
   },
 };
